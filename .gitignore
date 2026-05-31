@@ -1,0 +1,22 @@
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Working artifacts produced by the skill when run *inside this repo*.
+# RepoSkillOpt's own .reposkillopt/ (if anyone exercises the skill here)
+# is local context only and should not be committed. Sample reference
+# outputs under examples/reference-output/.../.reposkillopt/ ARE part of
+# the deliverable and MUST be tracked — the negation rule below preserves
+# them.
+.reposkillopt/
+!examples/reference-output/*/.reposkillopt/
+!examples/reference-output/*/.reposkillopt/**
+
+# Local logs / scratch
+*.log
+.scratch/
