@@ -32,6 +32,8 @@ examples/reference-output/         # Sample outputs against pallets/click@8.1.7 
     ├── feedback/                  # Sample Feedback Items
     ├── rollouts/                  # Sample Rollout Logs
     └── proposals/                 # Sample Skill Edit Proposals
+
+.gitignore                         # Excludes local working artifacts and build-time tooling (.claude/, .specify/, CLAUDE.md)
 ```
 
 ## How to use it across agents
