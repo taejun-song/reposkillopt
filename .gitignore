@@ -4,6 +4,7 @@
 # spec-kit workflow still works, but untracked.
 .claude/
 .specify/
+CLAUDE.md
 
 # OS / editor cruft
 .DS_Store
