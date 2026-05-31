@@ -1,7 +1,7 @@
 ---
 name: repo-skillopt
 description: Evidence-grounded legacy-repository understanding with recurrent human feedback and bounded skill convergence. Activates when the user asks to understand, map, document, onboard to, refactor, modify, or assess a repository.
-version: 0.1.0
+version: 0.2.0
 ---
 
 # RepoSkillOpt — Canonical Skill
@@ -115,9 +115,11 @@ When recurrent feedback (typically three or more related Feedback Items across o
 
 5. **Preserve rejected proposals.** Set `status: rejected` and populate `decision_rationale`. Do not delete — the rejected proposals are part of the audit trail.
 
-6. **Apply accepted proposals to the canonical skill.** When `status: accepted`, the proposal's diff is applied to this `SKILL.md`. The canonical version is bumped per Keep-A-Changelog + semver: major if the diff breaks the adapter-equivalence checklist, minor if additive, patch if clarifying. A row is added to `skills/repo-skillopt/CHANGELOG.md`.
+6. **Gate before accepting.** A `scope: generic` proposal may move to `status: accepted` **only** after it passes a validation gate: applied to a candidate skill version, it must regenerate specifications for a held-out reference set (disjoint from the repositories whose feedback motivated it) whose per-dimension rubric scores do not regress and whose deterministic checks still pass, with the proposal's expected effect realized on at least one dimension (or explicitly waived). The run is recorded as a Validation Gate Report and referenced by the proposal. The gate authorizes — it does not replace — the acceptance flow below.
 
-7. **Prefer edits that generalize.** When a proposed change would specialize the generic skill to a single repository, flag it or rewrite it. Generalizable improvements outweigh repository-specific ones for this artifact.
+7. **Apply accepted proposals to the canonical skill.** When `status: accepted` (with a passing gate referenced), the proposal's diff is applied to this `SKILL.md`. The canonical version is bumped per Keep-A-Changelog + semver: major if the diff breaks the adapter-equivalence checklist, minor if additive, patch if clarifying. A row is added to `skills/repo-skillopt/CHANGELOG.md`.
+
+8. **Prefer edits that generalize.** When a proposed change would specialize the generic skill to a single repository, flag it or rewrite it. Generalizable improvements outweigh repository-specific ones for this artifact.
 
 ## Output Discipline
 

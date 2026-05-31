@@ -11,6 +11,7 @@ expected_effect: <one short paragraph>
 risk_notes: <one short paragraph>
 review_time_estimate_minutes: <integer 1–5>
 status: proposed
+validation_gate_report: <VG-YYYY-MM-DD-NNN; required to be a PASS report before status becomes accepted — see rubric/validation-gate.md>
 decided: <YYYY-MM-DD; required when status becomes accepted or rejected>
 decision_rationale: <required when status becomes accepted or rejected>
 ---
@@ -30,6 +31,11 @@ Scope discipline (FR-016, FR-022):
   Such proposals are either rewritten to generalize, or rejected, or routed
   to a per-repository scope-decision artifact.
 - scope: generic is the only kind eligible for canonical acceptance.
+
+Validation gate (feature 003):
+- A scope: generic proposal may become status: accepted ONLY after it passes a
+  validation gate; set validation_gate_report to the PASS report's id. See
+  rubric/validation-gate.md and Skill Convergence Loop step 6 in SKILL.md.
 
 edit_kind values:
 - ADD          add new content

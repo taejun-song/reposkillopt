@@ -141,6 +141,8 @@ When several Feedback Items point at the same gap in the canonical skill, ask th
 
 See `rubric/evaluation-rubric.md` (15 qualitative dimensions, scored 0–3) and `rubric/deterministic-checks.md` (7 pass/fail checks). The rubric is technology-agnostic and is the same instrument used to compare canonical skill versions over time.
 
+**Validation gate.** Accepting a `scope: generic` skill edit into the canonical skill now requires a passing **validation gate**: the candidate edit must regenerate specifications for a commit-pinned **held-out reference set** (disjoint from the repositories that motivated it) without regressing any per-dimension rubric score and without any deterministic-check regression. See `rubric/validation-gate.md` (procedure + criterion), `rubric/held-out-set.md` (the held-out repos), and `rubric/gates/` (the reports). This is canonical from skill version `0.2.0`.
+
 ## Versioning
 
 The canonical skill follows [Semantic Versioning](https://semver.org/). The `version:` field in `skills/repo-skillopt/SKILL.md` is the source of truth; every adapter mirrors it via its `canonical_version:` field (in YAML front matter or, for environments that forbid YAML front matter, in an HTML-comment metadata block at the top of the adapter file). Changes are recorded in `skills/repo-skillopt/CHANGELOG.md` using [Keep a Changelog](https://keepachangelog.com/) conventions.
