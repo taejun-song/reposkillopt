@@ -1,3 +1,10 @@
+# Build-time tooling (Spec Kit framework + Claude Code slash-command skills).
+# These drive how this package was authored; they are NOT part of the
+# RepoSkillOpt deliverable and must not be published. Kept locally so the
+# spec-kit workflow still works, but untracked.
+.claude/
+.specify/
+
 # OS / editor cruft
 .DS_Store
 Thumbs.db
