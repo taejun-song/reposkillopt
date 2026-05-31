@@ -20,6 +20,12 @@ rubric/                            # Evaluation rubric (qualitative + determinis
 ├── evaluation-rubric.md
 └── deterministic-checks.md
 
+install.sh                         # One-line bootstrap for the CLI installer
+installer/                         # Optional POSIX-sh installer (install/list/uninstall)
+├── reposkillopt-install
+├── lib/{util,targets,detect,manifest}.sh
+└── tests/
+
 adapters/                          # Thin per-environment wrappers around the canonical skill
 ├── claude-code/SKILL.md
 ├── codex/AGENTS.md
@@ -51,6 +57,29 @@ When you (or an agent) use this skill on a *target* repository, the skill writes
 ```
 
 Every adapter writes to and reads from this same layout, so artifacts produced under one adapter remain readable by another.
+
+### Install with the CLI (one command)
+
+The optional installer drops the right adapter into a target repo for you. From inside your target repository:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/taejun-song/reposkillopt/main/install.sh | sh -s -- --agent claude-code
+```
+
+Or, after cloning this repo, run it directly (audit-friendly, fully offline):
+
+```sh
+/path/to/reposkillopt/installer/reposkillopt-install --agent claude-code --dest /path/to/target-repo
+```
+
+| Target | `--agent` | Installs to |
+|---|---|---|
+| Claude Code | `claude-code` | `<dest>/.claude/skills/repo-skillopt/SKILL.md` |
+| Codex | `codex` | `<dest>/AGENTS.md` |
+| OpenCode | `opencode` | `<dest>/AGENTS.md` |
+| Generic | `generic` | `<dest>/skill.md` + `system-prompt-fragment.md` (requires `--dest`) |
+
+Useful flags: `--scaffold` (create the `.reposkillopt/` dirs), `--dry-run`, `--list`, `--uninstall <agent>`. With no `--agent` the installer auto-detects the harness and, if that's ambiguous (e.g. both Codex and OpenCode use `AGENTS.md`), exits with the valid targets rather than guessing. See `installer/README.md` for full details.
 
 ### Quick start (Claude Code)
 

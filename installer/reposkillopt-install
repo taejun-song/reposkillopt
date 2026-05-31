@@ -1,0 +1,200 @@
+#!/bin/sh
+# reposkillopt-install — install a RepoSkillOpt adapter into a target repository.
+# POSIX sh, no runtime dependencies. See specs/002-cli-installer/contracts/.
+set -u
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
+LIB="$SCRIPT_DIR/lib"
+
+# shellcheck source=installer/lib/util.sh
+. "$LIB/util.sh"
+# shellcheck source=installer/lib/targets.sh
+. "$LIB/targets.sh"
+# shellcheck source=installer/lib/detect.sh
+. "$LIB/detect.sh"
+# shellcheck source=installer/lib/manifest.sh
+. "$LIB/manifest.sh"
+
+TOOL_VERSION="0.1.0"
+
+usage() {
+  cat <<EOF
+reposkillopt-install — install a RepoSkillOpt adapter into a target repository.
+
+Usage:
+  reposkillopt-install [install] [--agent <id>] [--dest <dir>] [--scaffold] [--force] [--dry-run]
+  reposkillopt-install --list [--dest <dir>]
+  reposkillopt-install --uninstall <id> [--dest <dir>]
+  reposkillopt-install --help | --version
+
+Targets: $TARGET_IDS
+  (codex and opencode both use AGENTS.md and cannot be auto-distinguished; name one.)
+
+Exit codes: 0 ok/up-to-date  1 error  2 usage  3 ambiguous/undetected  4 not writable  5 refused downgrade
+EOF
+}
+
+# --- argument parsing ---
+MODE="install"
+AGENT=""
+DEST="."
+DEST_EXPLICIT=0
+SCAFFOLD=0
+FORCE=0
+DRY_RUN=0
+UNINSTALL_ID=""
+
+while [ $# -gt 0 ]; do
+  case $1 in
+    install) MODE="install" ;;
+    --agent) shift; [ $# -gt 0 ] || { err "--agent needs a value"; exit "$EX_USAGE"; }; AGENT=$1 ;;
+    --agent=*) AGENT=${1#--agent=} ;;
+    --dest) shift; [ $# -gt 0 ] || { err "--dest needs a value"; exit "$EX_USAGE"; }; DEST=$1; DEST_EXPLICIT=1 ;;
+    --dest=*) DEST=${1#--dest=}; DEST_EXPLICIT=1 ;;
+    --scaffold) SCAFFOLD=1 ;;
+    --force) FORCE=1 ;;
+    --dry-run) DRY_RUN=1 ;;
+    --list) MODE="list" ;;
+    --uninstall) shift; [ $# -gt 0 ] || { err "--uninstall needs an adapter id"; exit "$EX_USAGE"; }; MODE="uninstall"; UNINSTALL_ID=$1 ;;
+    --uninstall=*) MODE="uninstall"; UNINSTALL_ID=${1#--uninstall=} ;;
+    -h|--help) usage; exit "$EX_OK" ;;
+    --version) say "reposkillopt-install $TOOL_VERSION"; exit "$EX_OK" ;;
+    *) err "unknown argument: $1"; usage >&2; exit "$EX_USAGE" ;;
+  esac
+  shift
+done
+export DRY_RUN
+
+canonical_version() { read_field "$REPO_ROOT/skills/repo-skillopt/SKILL.md" version; }
+
+list_valid_targets() { info "valid targets: $TARGET_IDS"; }
+
+# --- resolve target root (must exist + be writable) ---
+resolve_root() {
+  if [ ! -d "$DEST" ]; then err "target not found: $DEST"; exit "$EX_TARGET"; fi
+  if [ ! -w "$DEST" ]; then err "target not writable: $DEST"; exit "$EX_TARGET"; fi
+  ROOT=$(CDPATH= cd -- "$DEST" && pwd)
+}
+
+do_scaffold() {
+  for _d in specs feedback rollouts proposals; do
+    _p="$ROOT/.reposkillopt/$_d"
+    if [ -d "$_p" ]; then continue; fi
+    if [ "$DRY_RUN" = "1" ]; then info "[dry-run] mkdir $_p"; else mkdir -p -- "$_p" || { err "scaffold failed: $_p"; exit "$EX_ERR"; }; fi
+  done
+}
+
+# --- install ---
+cmd_install() {
+  resolve_root
+
+  # Resolve agent: explicit, else detect.
+  if [ -n "$AGENT" ]; then
+    target_valid "$AGENT" || { err "unknown agent: $AGENT"; list_valid_targets; exit "$EX_USAGE"; }
+  else
+    _cands=$(detect_targets "$ROOT")
+    _n=0
+    for _c in $_cands; do _n=$((_n + 1)); done
+    if [ "$_n" -ne 1 ]; then
+      if [ "$_n" -eq 0 ]; then err "no harness detected and --agent not given"; else err "ambiguous harness ($_cands); --agent required"; fi
+      list_valid_targets
+      exit "$EX_DETECT"
+    fi
+    AGENT=$_cands
+  fi
+
+  if target_requires_dest "$AGENT" && [ "$DEST_EXPLICIT" -ne 1 ]; then
+    err "target '$AGENT' requires an explicit --dest <dir>"
+    exit "$EX_USAGE"
+  fi
+
+  _srcver=""
+  _csv=""
+  _first=1
+  # version is read from the first source file's canonical_version
+  for _sf in $(target_source_files "$AGENT"); do
+    _abs="$REPO_ROOT/$_sf"
+    [ -f "$_abs" ] || { err "missing adapter source: $_sf"; exit "$EX_ERR"; }
+    if [ "$_first" = "1" ]; then _srcver=$(read_field "$_abs" canonical_version); fi
+    _first=0
+  done
+  [ -n "$_srcver" ] || _srcver=$(canonical_version)
+
+  # Version gate against any existing install.
+  _recorded=$(manifest_version "$ROOT" "$AGENT")
+  _action="install"
+  if [ -n "$_recorded" ]; then
+    _cmp=$(semver_cmp "$_srcver" "$_recorded")
+    case $_cmp in
+      eq) say "$AGENT already up to date (version $_recorded) at $ROOT"; exit "$EX_OK" ;;
+      gt) _action="upgrade" ;;
+      lt)
+        if [ "$FORCE" -ne 1 ]; then
+          err "refusing to downgrade $AGENT ($_recorded -> $_srcver); use --force"
+          exit "$EX_DOWNGRADE"
+        fi
+        _action="downgrade"
+        ;;
+    esac
+  fi
+
+  # Place file(s) atomically; build the manifest paths CSV.
+  for _sf in $(target_source_files "$AGENT"); do
+    _abs="$REPO_ROOT/$_sf"
+    _rel=$(target_install_rel "$AGENT")
+    if [ -n "$_rel" ]; then
+      _relpath=$_rel
+    else
+      _relpath=$(basename -- "$_sf")   # generic: basename at the target root
+    fi
+    copy_atomic "$_abs" "$ROOT/$_relpath" || exit "$EX_ERR"
+    if [ -n "$_csv" ]; then _csv="$_csv,$_relpath"; else _csv=$_relpath; fi
+  done
+
+  [ "$SCAFFOLD" = "1" ] && do_scaffold
+
+  manifest_upsert "$ROOT" "$AGENT" "$_srcver" "$_csv" || { err "manifest update failed"; exit "$EX_ERR"; }
+
+  # Summary (stdout). Always shows path(s) + version so the user can verify the match.
+  if [ "$DRY_RUN" = "1" ]; then
+    say "[dry-run] would $_action $AGENT (version $_srcver) -> $_csv under $ROOT"
+  else
+    case $_action in
+      upgrade)   say "Upgraded $AGENT ($_recorded -> $_srcver)" ;;
+      downgrade) say "Downgraded $AGENT ($_recorded -> $_srcver) [--force]" ;;
+      *)         say "Installed $AGENT (canonical_version $_srcver)" ;;
+    esac
+    say "  files: $_csv"
+    say "  under: $ROOT"
+    say "Next: open your agent in the target repo and say \"Help me understand this repository.\""
+  fi
+}
+
+cmd_list() {
+  resolve_root
+  manifest_list "$ROOT"
+}
+
+cmd_uninstall() {
+  resolve_root
+  target_valid "$UNINSTALL_ID" || { err "unknown agent: $UNINSTALL_ID"; list_valid_targets; exit "$EX_USAGE"; }
+  _rec=$(manifest_get "$ROOT" "$UNINSTALL_ID")
+  if [ -z "$_rec" ]; then say "$UNINSTALL_ID not installed at $ROOT"; exit "$EX_OK"; fi
+  _paths=$(printf '%s' "$_rec" | awk -F "$TAB" '{print $3}')
+  _oldifs=$IFS; IFS=,
+  for _p in $_paths; do
+    IFS=$_oldifs
+    if [ "$DRY_RUN" = "1" ]; then info "[dry-run] rm $ROOT/$_p"; else rm -f -- "$ROOT/$_p"; fi
+    IFS=,
+  done
+  IFS=$_oldifs
+  manifest_remove_row "$ROOT" "$UNINSTALL_ID"
+  say "Uninstalled $UNINSTALL_ID from $ROOT"
+}
+
+case $MODE in
+  install)   cmd_install ;;
+  list)      cmd_list ;;
+  uninstall) cmd_uninstall ;;
+esac
