@@ -56,3 +56,57 @@ Baselines describe the **current released** skill version. Recompute (and relabe
 ## Comparing versions
 
 To compare two candidate versions, score each against the **same** held-out set and diff the per-dimension rows of their reports. Because each report records per-dimension baseline-vs-candidate scores, a reader obtains per-dimension deltas across versions directly from the reports — no baseline re-derivation needed. A regression on any single dimension is visible even when an advisory aggregate is unchanged. This extends the project's version-comparison capability (feature 001 SC-012) from a single sheet to a versioned series of gate reports.
+
+## Scoring modes
+
+The gate may be scored in one of two modes; every gate report records which one it used.
+
+| Mode | Scorers | Use |
+|---|---|---|
+| `single` | One scorer-of-record (the default above) | Low-risk edits. |
+| `majority` | N independent scorers, odd and ≥3 (below) | Required for high-stakes edits. |
+
+**Majority mode is REQUIRED when any of these holds:**
+
+1. the proposal edits the canonical **Operating Principles** section, **or**
+2. the proposal **previously failed** a validation gate (any earlier `FAIL`/`HELD`), **or**
+3. the single scorer-of-record records **low confidence** on any decisive dimension.
+
+Otherwise a low-risk clarifying edit MAY use `single` mode. The required-when list is a **minimum** — a maintainer may always choose `majority` for extra assurance.
+
+Majority mode changes only **how scoring is performed** (one scorer → N + aggregation); it does **not** change what the gate *requires*. It is therefore methodology only: it needs **no edit to the canonical skill or adapters** and no version bump.
+
+## Majority mode (N scorers)
+
+In majority mode, **N independent scorers** (N odd, ≥3; default 3, scaling to 5/7 for the highest-stakes edits) each apply the rubric to every regenerated held-out specification, and the per-dimension scores are combined by majority.
+
+### Roster and independence
+
+- The roster is **odd and ≥3**. Scorers may be human, agent, or a mix.
+- Each scorer scores **blind** — without access to any other scorer's scores before submitting. Agent scorers count as independent only when run in **separate sessions with no shared transcript** (varying the scoring framing reduces model-correlated error). A human scorer is encouraged for high-stakes edits but not mandated.
+- The report records the roster (each scorer's role and `human`/`agent`) and an **independence attestation**.
+
+### Independence breaches
+
+If a scorer scored after seeing another's scores, their row is **excluded** (if the roster stays odd and ≥3) or **redone blind**. A verdict MUST NOT rest on a non-independent row.
+
+### Aggregation
+
+For each dimension, the **aggregate** is the **majority (modal)** score across scorers. If no strict majority exists, it is the **median**, and the dimension is flagged **low-agreement**. A dimension is low-agreement when the scorers span a **range ≥ 2**. Deterministic checks aggregate by **majority pass/fail** per check.
+
+> Cross-scorer aggregation combines scores **within a single dimension**. It is *not* the cross-dimension aggregate (sum/mean across the 15 dimensions) that must never replace per-dimension comparison — that rule still holds.
+
+### Adjudication and the HELD verdict
+
+A low-agreement dimension whose aggregate is **above** baseline is recorded but does **not** block. A low-agreement dimension whose aggregate is **at or below** baseline is a possible masked regression and MUST be **adjudicated** — re-scored to resolution, with the resolved value and adjudicator recorded — before the gate may PASS. Adjudication updates that dimension's aggregated row to the resolved value. An unresolved such dimension yields verdict **`HELD`** (not PASS, not FAIL).
+
+### Majority verdict rule (deterministic, reproducible from the matrix)
+
+```
+FAIL  if any dimension aggregate < baseline on any held-out repo,
+      OR any deterministic check aggregates (majority) to fail.
+HELD  if not FAIL, AND some dimension is low-agreement AND at or below baseline AND not adjudicated.
+PASS  otherwise (no regression; every contested at-or-below dimension adjudicated; expected effect realized or waived).
+```
+
+The verdict depends only on the recorded per-scorer matrix and these rules, so anyone re-aggregating reaches the same `PASS`/`FAIL`/`HELD`. The optional helper `rubric/scripts/majority-aggregate.sh` implements exactly this rule over a report's aggregated tables; it is a convenience, not a requirement. Report schema: `specs/004-majority-scoring/contracts/majority-gate-report.contract.md`.
