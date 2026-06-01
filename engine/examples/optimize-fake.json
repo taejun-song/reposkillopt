@@ -1,0 +1,74 @@
+{
+  "skill_text": "# Demo skill\n\n## Operating Principles\n- Ground every claim in evidence.\n",
+  "version": "0.2.0",
+  "held_out": [
+    {
+      "name": "six",
+      "commit": "1.16.0",
+      "content": "<repo>",
+      "baseline": {
+        "architectural_correctness": 3,
+        "evidence_quality": 3,
+        "citation_validity": 3,
+        "file_symbol_grounding": 3,
+        "hallucination_avoidance": 3,
+        "change_localization": 3,
+        "usefulness": 3,
+        "risk_awareness": 3,
+        "fact_hypothesis_distinction": 3,
+        "test_strategy_quality": 3,
+        "feedback_responsiveness": 3,
+        "spec_completeness": 3,
+        "spec_maintainability": 3,
+        "cross_agent_portability": 3,
+        "failure_mode_resistance": 3
+      }
+    }
+  ],
+  "gate": {
+    "mode": "single"
+  },
+  "max_rounds": 5,
+  "fake": {
+    "scores": [
+      {
+        "scores": {
+          "architectural_correctness": 3,
+          "evidence_quality": 3,
+          "citation_validity": 3,
+          "file_symbol_grounding": 3,
+          "hallucination_avoidance": 3,
+          "change_localization": 3,
+          "usefulness": 3,
+          "risk_awareness": 3,
+          "fact_hypothesis_distinction": 3,
+          "test_strategy_quality": 3,
+          "feedback_responsiveness": 3,
+          "spec_completeness": 3,
+          "spec_maintainability": 3,
+          "cross_agent_portability": 3,
+          "failure_mode_resistance": 3
+        },
+        "checks": {
+          "cited_paths_exist": "pass",
+          "cited_symbols_exist": "pass",
+          "sections_present": "pass",
+          "unsupported_claims_marked": "pass",
+          "no_hallucinated_refs": "pass",
+          "prior_feedback_addressed": "pass",
+          "adapter_preserves_intent": "pass"
+        }
+      }
+    ],
+    "proposals": [
+      {
+        "edit_kind": "ADD",
+        "anchor": "- Ground every claim in evidence.",
+        "payload": "\n- Enumerate secondary structures (non-pytest test trees, internal modules).",
+        "scope": "generic",
+        "bump_level": "minor",
+        "expected_effect": "broader coverage"
+      }
+    ]
+  }
+}

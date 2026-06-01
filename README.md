@@ -143,6 +143,20 @@ See `rubric/evaluation-rubric.md` (15 qualitative dimensions, scored 0–3) and 
 
 **Validation gate.** Accepting a `scope: generic` skill edit into the canonical skill now requires a passing **validation gate**: the candidate edit must regenerate specifications for a commit-pinned **held-out reference set** (disjoint from the repositories that motivated it) without regressing any per-dimension rubric score and without any deterministic-check regression. See `rubric/validation-gate.md` (procedure + criterion), `rubric/held-out-set.md` (the held-out repos), and `rubric/gates/` (the reports). This is canonical from skill version `0.2.0`. For high-stakes edits the gate can be scored in **majority mode** — N independent scorers (odd, ≥3) with per-dimension majority aggregation and a `HELD` outcome for contested potential regressions; see `rubric/validation-gate.md` → *Majority mode*. (Majority mode is scoring methodology only — it requires no canonical or adapter change.)
 
+## Executable engine (optional, opt-in)
+
+An optional Python **convergence engine** under [`engine/`](engine/README.md) makes the
+validation gate and convergence loop *runnable* — propose a bounded edit → run the gate via
+a provider-agnostic LLM layer (Anthropic, OpenAI, or any OpenAI-compatible / open-source
+endpoint) → accept and bump the version only on PASS → repeat. It is the executable
+counterpart to the `rubric/validation-gate.md` methodology.
+
+> **Scope note.** The RepoSkillOpt core is deliberately skill-first (Markdown + optional
+> shell, no service/network). The engine **intentionally crosses that line** (it calls an
+> LLM) and is therefore isolated in `engine/` and **strictly optional** — the skill,
+> adapters, templates, rubric, and installer all work without it, and it never edits the
+> canonical skill at run time. See `engine/README.md`.
+
 ## Versioning
 
 The canonical skill follows [Semantic Versioning](https://semver.org/). The `version:` field in `skills/repo-skillopt/SKILL.md` is the source of truth; every adapter mirrors it via its `canonical_version:` field (in YAML front matter or, for environments that forbid YAML front matter, in an HTML-comment metadata block at the top of the adapter file). Changes are recorded in `skills/repo-skillopt/CHANGELOG.md` using [Keep a Changelog](https://keepachangelog.com/) conventions.
