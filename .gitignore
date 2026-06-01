@@ -25,6 +25,16 @@ Thumbs.db
 !examples/reference-output/*/.reposkillopt/
 !examples/reference-output/*/.reposkillopt/**
 
+# Python (the optional engine/ — first Python in the repo)
+__pycache__/
+*.pyc
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
 # Local logs / scratch
 *.log
 .scratch/

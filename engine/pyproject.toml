@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "reposkillopt-engine"
+version = "0.1.0"
+description = "Executable, provider-agnostic convergence optimizer for the RepoSkillOpt validation gate"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+# Zero required runtime dependencies — the engine uses only the Python standard library
+# (urllib for real providers, json, dataclasses, statistics). Real LLM access needs an
+# API key in the environment, not a package.
+dependencies = []
+
+[project.scripts]
+reposkillopt-engine = "reposkillopt_engine.cli:main"
+
+[tool.setuptools]
+packages = ["reposkillopt_engine", "reposkillopt_engine.providers"]
