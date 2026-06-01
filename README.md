@@ -175,6 +175,13 @@ RepoSkillOpt does **not** claim universal repository understanding. In particula
 
 Apache-2.0. See `LICENSE`.
 
+## Understanding the whole repo
+
+- **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)** — one document covering the entire repo:
+  the relation map, layer architecture, the full function/symbol reference (Python engine +
+  shell), the artifact-schema catalog (all contracts/templates), the gate-verdict spine, and
+  data-flow walkthroughs.
+
 ## Design documents
 
 - Specification: `specs/001-reposkillopt-skill/spec.md`
