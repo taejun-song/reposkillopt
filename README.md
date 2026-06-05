@@ -151,6 +151,12 @@ a provider-agnostic LLM layer (Anthropic, OpenAI, or any OpenAI-compatible / ope
 endpoint) → accept and bump the version only on PASS → repeat. It is the executable
 counterpart to the `rubric/validation-gate.md` methodology.
 
+It can optionally **use the real [microsoft/SkillOpt](https://github.com/microsoft/SkillOpt)
+package** (`pip install skillopt`) as an alternate optimizer backend: `--backend skillopt`
+applies edits with SkillOpt's `apply_edit` and makes the accept/reject decision with
+SkillOpt's `evaluate_gate`. So beyond being *inspired by* SkillOpt, the engine can genuinely
+run on it.
+
 > **Scope note.** The RepoSkillOpt core is deliberately skill-first (Markdown + optional
 > shell, no service/network). The engine **intentionally crosses that line** (it calls an
 > LLM) and is therefore isolated in `engine/` and **strictly optional** — the skill,

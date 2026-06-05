@@ -163,6 +163,16 @@ low-agreement when scorer range ≥ 2.
 
 **`version.py`** — `parse(v) -> (a,b,c)`, `bump(v, level) -> str`
 
+**`skillopt_backend.py`** — **real** microsoft/SkillOpt integration (optional dependency)
+- `HAS_SKILLOPT: bool`, `SKILLOPT_VERSION`, `require()`
+- `to_skillopt_edit(proposal) -> skillopt.types.Edit` (our 6 kinds → SkillOpt's append/insert_after/replace/delete)
+- `apply_proposal(skill, proposal) -> str` — via **`skillopt.optimizer.apply_edit`**
+- `rubric_score(results) -> float` — per-dimension aggregates → a [0,1] scalar for SkillOpt's gate
+- `gate_decision(...) -> skillopt.types.GateResult` — via **`skillopt.evaluation.evaluate_gate`** (accept_new_best/accept/reject)
+
+`optimizer.optimize(..., config.backend="skillopt")` routes edit application + the accept
+decision through SkillOpt; `backend="native"` (default) uses the rubric no-regression path.
+
 **`providers/`** — provider-agnostic LLM layer
 - `base.py`: `class LLMProvider(ABC)` with `complete(prompt, *, system=None) -> str`; `class ProviderError`
 - `fake.py`: `class FakeProvider` — deterministic, routes on `REGENERATE_SPEC|SCORE_SPEC|PROPOSE_EDIT`
@@ -282,6 +292,10 @@ aggregation, the PASS/FAIL/HELD verdict, proposal application, version bump, the
   verified analyses of the named repositories at their pinned commits. Every such file says so.
 - **Structurally complete but unexercised here**: the real `AnthropicProvider` /
   `OpenAICompatibleProvider` network paths (no API keys / held-out repos checked out in this repo).
+- **Real & exercised — the SkillOpt backend**: `engine/.../skillopt_backend.py` genuinely uses
+  the `skillopt` PyPI package (microsoft/SkillOpt) — `optimize(..., backend="skillopt")` applies
+  edits with `skillopt.optimizer.apply_edit` and decides accept/reject with
+  `skillopt.evaluation.evaluate_gate`. Covered by passing tests (skipped only if `skillopt` is absent).
 - **Scope boundary**: the core is skill-first (Markdown + optional shell, no required network).
   The `engine/` deliberately crosses that line (it calls an LLM) and is therefore isolated and
   opt-in; it never edits the canonical skill at run time.
