@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from . import skillopt_backend as so
 from .gate import GateConfig, HeldOutRepo, run_gate
 from .judge import propose_edit
-from .proposal import Proposal, ProposalError
+from .proposal import ProposalError
 from .providers.base import LLMProvider
 from .rubric import Verdict
 from .version import bump

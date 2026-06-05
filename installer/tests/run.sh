@@ -34,9 +34,6 @@ assert_nofile() { # <path> <msg>
 assert_same() { # <fileA> <fileB> <msg>
   cmp -s "$1" "$2" || fail "$3 ($1 != $2)"; }
 
-assert_contains() { # <file> <substr> <msg>
-  grep -qF "$2" "$1" 2>/dev/null || fail "$3 (no '$2' in $1)"; }
-
 # (helpers are inherited by the sourced test subshell; no export needed.)
 
 # mktemp portability

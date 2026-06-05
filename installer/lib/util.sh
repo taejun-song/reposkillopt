@@ -14,7 +14,6 @@ EX_DOWNGRADE=5
 # Logging: user-facing summary to stdout; diagnostics/errors to stderr.
 say()  { printf '%s\n' "$*"; }
 info() { printf '%s\n' "$*" >&2; }
-warn() { printf 'warning: %s\n' "$*" >&2; }
 err()  { printf 'error: %s\n' "$*" >&2; }
 
 timestamp() { date -u +%Y-%m-%dT%H:%M:%SZ; }

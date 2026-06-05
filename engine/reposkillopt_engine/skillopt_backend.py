@@ -20,7 +20,7 @@ from .rubric import RepoResult
 try:  # the dependency is optional — guard the import
     from skillopt.evaluation import evaluate_gate as _evaluate_gate
     from skillopt.optimizer import apply_edit as _apply_edit
-    from skillopt.types import Edit as _Edit, GateResult as _GateResult
+    from skillopt.types import Edit as _Edit
     import skillopt as _skillopt
     HAS_SKILLOPT = True
     SKILLOPT_VERSION = getattr(_skillopt, "__version__", "?")
