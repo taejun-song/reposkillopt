@@ -43,9 +43,15 @@ Or install the console script: `pip install -e engine` → `reposkillopt-engine 
 | `fake` (default) | Deterministic offline provider for tests/dry-runs | — |
 | `anthropic:<model>` | Anthropic Messages API | `ANTHROPIC_API_KEY` |
 | `openai:<model>` | OpenAI **or any OpenAI-compatible endpoint** — vLLM, Ollama's OpenAI shim, llama.cpp server, LM Studio, etc. | `OPENAI_API_KEY`, `OPENAI_BASE_URL` |
+| `claude-cli` | Local **Claude Code CLI** (`claude -p`) — real LLM calls with **no API key** when run where `claude` is installed | — |
 
 Open-source / local models are reached through `openai:<model>` by pointing `OPENAI_BASE_URL`
 at the local server. Adding a new backend = one small `LLMProvider.complete()` subclass.
+
+The `claude-cli` provider is what makes a **real, no-API-key** end-to-end run possible inside
+a Claude Code environment — and it is verified: a live `tests/test_claude_cli_live.py`
+(opt-in via `RSO_LIVE_CLAUDE=1`) regenerates a spec for a tiny repo and scores it into a full
+15-dimension / 7-check card.
 
 ## What it does
 

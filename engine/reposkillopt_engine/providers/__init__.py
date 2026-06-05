@@ -13,6 +13,7 @@ def make_provider(spec: str, **kwargs) -> LLMProvider:
     ``fake``                       -> FakeProvider (offline, default)
     ``anthropic`` / ``anthropic:<model>``
     ``openai`` / ``openai:<model>``  (OpenAI or any OpenAI-compatible / OSS endpoint)
+    ``claude-cli``                 -> local Claude Code CLI (`claude -p`); no API key needed
     """
     name, _, model = spec.partition(":")
     name = name.strip().lower()
@@ -26,6 +27,9 @@ def make_provider(spec: str, **kwargs) -> LLMProvider:
             model = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
         from .openai_compatible import OpenAICompatibleProvider
         return OpenAICompatibleProvider(model=model, **kwargs)
+    if name in ("claude-cli", "claude_cli", "cli"):
+        from .claude_cli import ClaudeCLIProvider
+        return ClaudeCLIProvider(**kwargs)
     raise ProviderError(f"unknown provider: {spec!r}")
 
 
