@@ -57,6 +57,7 @@ def cmd_optimize(args) -> int:
         patience=cfg.get("patience", 2),
         guidance=cfg.get("guidance", OptimizerConfig.guidance),
         gate=GateConfig(**cfg.get("gate", {})),
+        backend=getattr(args, "backend", None) or cfg.get("backend", "native"),
     )
     res = optimize(_provider(args, cfg), skill, cfg.get("version", "0.1.0"), repos, opt_cfg)
     print(f"final version {res.version}; {res.accepted_count} accepted of {len(res.history)} rounds")
@@ -81,6 +82,8 @@ def main(argv: list[str] | None = None) -> int:
     o = sub.add_parser("optimize", help="run the convergence loop")
     o.add_argument("config")
     o.add_argument("--out", help="write the final skill text here")
+    o.add_argument("--backend", choices=["native", "skillopt"],
+                   help="native rubric gate (default) | real microsoft/SkillOpt gate")
     o.set_defaults(func=cmd_optimize)
 
     args = p.parse_args(argv)

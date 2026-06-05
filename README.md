@@ -4,6 +4,33 @@ A **portable, skill-first** package that teaches any coding-agent harness — Cl
 
 RepoSkillOpt is not a service, not a CLI, not a database, and not a model fine-tune. It is a vendor-neutral Markdown skill plus a small set of templates, adapter examples, and an evaluation rubric.
 
+## Architecture at a glance
+
+```text
+        skills/repo-skillopt/SKILL.md  (canonical, v0.2.0)  ◀── source of truth
+                   │ mirrored (adapter-equivalence)
+        ┌──────────┼───────────┬───────────┐
+        ▼          ▼           ▼           ▼
+   claude-code   codex     opencode     generic        templates/  ── instantiated as ──┐
+   (adapters/, each canonical_version: 0.2.0)                                            │
+        │ installed into a target repo by                                                ▼
+        ▼                                              <target>/.reposkillopt/{specs,feedback,
+   installer/  install.sh ─► reposkillopt-install ─►        rollouts,proposals}/  (skill output)
+        │                                                                  ▲
+   quality measured by ▼                                                   │ produced when the
+   rubric/  evaluation-rubric (15 dims) + deterministic-checks (7)         │ skill is RUN
+            validation-gate.md  ─► single-scorer (003) + majority/HELD (004)
+            gates/ (reports)   scripts/ (verdict helpers, shell)
+        │ executed by (optional, opt-in) ▼
+   engine/  optimizer ─► propose ─► gate (regenerate+score+aggregate) ─► accept+bump ─► loop
+            providers: fake | anthropic | openai-compatible (OSS)
+            backend:   native (rubric no-regression)  ──or──  skillopt  ◀── real microsoft/SkillOpt
+                                                                            (apply_edit + evaluate_gate)
+```
+
+Full version — relation map, function reference, schemas — in
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
 ## What you get
 
 ```text
@@ -150,6 +177,12 @@ validation gate and convergence loop *runnable* — propose a bounded edit → r
 a provider-agnostic LLM layer (Anthropic, OpenAI, or any OpenAI-compatible / open-source
 endpoint) → accept and bump the version only on PASS → repeat. It is the executable
 counterpart to the `rubric/validation-gate.md` methodology.
+
+It can optionally **use the real [microsoft/SkillOpt](https://github.com/microsoft/SkillOpt)
+package** (`pip install skillopt`) as an alternate optimizer backend: `--backend skillopt`
+applies edits with SkillOpt's `apply_edit` and makes the accept/reject decision with
+SkillOpt's `evaluate_gate`. So beyond being *inspired by* SkillOpt, the engine can genuinely
+run on it.
 
 > **Scope note.** The RepoSkillOpt core is deliberately skill-first (Markdown + optional
 > shell, no service/network). The engine **intentionally crosses that line** (it calls an

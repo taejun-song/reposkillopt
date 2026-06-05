@@ -14,6 +14,12 @@ license = { text = "Apache-2.0" }
 # API key in the environment, not a package.
 dependencies = []
 
+# Optional: the real microsoft/SkillOpt package, used as an alternate optimizer backend
+# (edit application via skillopt.optimizer.apply_edit + the accept/reject decision via
+# skillopt.evaluation.evaluate_gate). Install with: pip install "reposkillopt-engine[skillopt]".
+[project.optional-dependencies]
+skillopt = ["skillopt>=0.1.0"]
+
 [project.scripts]
 reposkillopt-engine = "reposkillopt_engine.cli:main"
 

@@ -7,6 +7,9 @@ to microsoft/SkillOpt's `train.py`: **propose a bounded skill edit → run the v
 gate → accept (and bump the version) only if it PASSes → repeat**, gated by the rubric
 instead of a benchmark reward, and **without touching model weights**.
 
+It can also **actually use microsoft/SkillOpt** (the real `skillopt` PyPI package) as an
+optional optimizer backend — not just be inspired by it. See *SkillOpt backend* below.
+
 ## ⚠️ Scope boundary (read this)
 
 The RepoSkillOpt **core is deliberately skill-first** — Markdown + optional shell helpers,
@@ -40,9 +43,15 @@ Or install the console script: `pip install -e engine` → `reposkillopt-engine 
 | `fake` (default) | Deterministic offline provider for tests/dry-runs | — |
 | `anthropic:<model>` | Anthropic Messages API | `ANTHROPIC_API_KEY` |
 | `openai:<model>` | OpenAI **or any OpenAI-compatible endpoint** — vLLM, Ollama's OpenAI shim, llama.cpp server, LM Studio, etc. | `OPENAI_API_KEY`, `OPENAI_BASE_URL` |
+| `claude-cli` | Local **Claude Code CLI** (`claude -p`) — real LLM calls with **no API key** when run where `claude` is installed | — |
 
 Open-source / local models are reached through `openai:<model>` by pointing `OPENAI_BASE_URL`
 at the local server. Adding a new backend = one small `LLMProvider.complete()` subclass.
+
+The `claude-cli` provider is what makes a **real, no-API-key** end-to-end run possible inside
+a Claude Code environment — and it is verified: a live `tests/test_claude_cli_live.py`
+(opt-in via `RSO_LIVE_CLAUDE=1`) regenerates a spec for a tiny repo and scores it into a full
+15-dimension / 7-check card.
 
 ## What it does
 
@@ -72,23 +81,48 @@ at the local server. Adding a new backend = one small `LLMProvider.complete()` s
 `content` is the repository material handed to the provider (file excerpts, tree, key
 sources). `baseline` is the per-dimension floor (the released version's scores).
 
+## SkillOpt backend (real microsoft/SkillOpt)
+
+Install the optional dependency and switch the optimizer to SkillOpt's own machinery:
+
+```sh
+pip install "reposkillopt-engine[skillopt]"     # or: pip install skillopt
+reposkillopt-engine optimize examples/optimize-fake.json --backend skillopt
+```
+
+With `--backend skillopt` (or `"backend": "skillopt"` in the config), each round:
+
+- applies the proposed edit with **`skillopt.optimizer.apply_edit`** (our six edit kinds map
+  onto SkillOpt's `append` / `insert_after` / `replace` / `delete` ops), and
+- makes the **accept/reject decision with `skillopt.evaluation.evaluate_gate`**, which returns
+  a real `GateAction` of `accept_new_best` / `accept` / `reject` over a rubric-derived score
+  (SkillOpt's `hard` metric = accept only on strict improvement).
+
+The native rubric backend (no-regression PASS/FAIL/HELD, features 003/004) remains the
+default and needs no SkillOpt. Integration lives in `reposkillopt_engine/skillopt_backend.py`
+(`HAS_SKILLOPT`, `apply_proposal`, `gate_decision`, `rubric_score`).
+
 ## Tests
 
 ```sh
 cd engine && python3 -m unittest discover -s tests -t .
 ```
 
-26 stdlib `unittest` tests cover aggregation, the PASS/FAIL/HELD verdict, proposal
-application, version bumping, the gate (single + majority + outlier + odd-N), and the
-optimizer loop (accept+bump, reject-on-regression, skip-repository-scoped) — all with the
-deterministic fake provider, so they run with no network and no API key.
+32 stdlib `unittest` tests cover aggregation, the PASS/FAIL/HELD verdict, proposal
+application, version bumping, the gate (single + majority + outlier + odd-N), the optimizer
+loop (accept+bump, reject-on-regression, skip-repository-scoped), and the **real SkillOpt
+backend** (edit-op mapping, `apply_edit`, `evaluate_gate`, and a full `--backend skillopt`
+optimize round). The SkillOpt tests skip cleanly when the package is absent; the rest run
+with no network and no API key.
 
 ## Honest limitations
 
-- Real-provider runs are **not exercised in CI here** (no keys, and the held-out repos
+- Real-provider (LLM) runs are **not exercised in CI here** (no keys, and the held-out repos
   aren't bundled). The deterministic core and loop logic are fully tested via the fake
   provider; the Anthropic/OpenAI adapters are structurally complete but unverified against
-  a live endpoint in this repo.
+  a live endpoint in this repo. **The SkillOpt backend, by contrast, IS exercised** — the
+  `skillopt` package is real, installed, and its `apply_edit`/`evaluate_gate` are called by
+  passing tests.
 - Scoring quality is only as good as the judge model + the rubric prompt; majority mode
   and the held-out-set disjointness rule (feature 004) mitigate single-scorer bias but do
   not eliminate model error.
