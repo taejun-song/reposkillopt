@@ -1,15 +1,9 @@
 import unittest
 
 from reposkillopt_engine.rubric import (
-    DIMENSIONS, RepoResult, ScoreCard, Verdict, aggregate, verdict_for,
+    RepoResult, ScoreCard, Verdict, aggregate, verdict_for,
 )
-from tests.helpers import full_checks, full_scores
-
-
-def cards(*score_dicts):
-    return [ScoreCard(scores=full_scores(**{} if s is None else s),
-                      checks={k: True for k in __import__("reposkillopt_engine.rubric", fromlist=["CHECKS"]).CHECKS})
-            for s in score_dicts]
+from tests.helpers import full_scores
 
 
 class TestAggregate(unittest.TestCase):
