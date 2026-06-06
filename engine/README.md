@@ -102,6 +102,40 @@ The native rubric backend (no-regression PASS/FAIL/HELD, features 003/004) remai
 default and needs no SkillOpt. Integration lives in `reposkillopt_engine/skillopt_backend.py`
 (`HAS_SKILLOPT`, `apply_proposal`, `gate_decision`, `rubric_score`).
 
+## Optimize a skill *for one repo* — fully SkillOpt-driven (`optimize-repo`)
+
+Where the `skillopt` backend above uses SkillOpt for two steps (apply + gate),
+`reposkillopt_engine/skillopt_native.py` hands the **whole optimization** to SkillOpt's
+own ReflACT machinery — **edit generation** (`gradient.run_minibatch_reflect`), **ranking**
+(`rank_and_select`), **patch apply** (`apply_patch`), and the **gate** (`evaluate_gate`).
+RepoSkillOpt supplies only the reward (produce a spec for the repo, score it with the rubric).
+The result is a per-repo `best_skill.md`; the **canonical, repo-neutral skill is never touched**.
+
+```sh
+# keyless — SkillOpt's edit generator runs on the local Claude CLI (no API key):
+python3 -m reposkillopt_engine optimize-repo /path/to/target-repo \
+    --skill ../skills/repo-skillopt/SKILL.md --opt-backend claude-code --rollout-provider claude-cli
+
+# with an API key, if you want — pick any SkillOpt API-key backend + provider:
+OPENAI_API_KEY=… python3 -m reposkillopt_engine optimize-repo /path/to/target-repo \
+    --skill ../skills/repo-skillopt/SKILL.md --opt-backend openai --rollout-provider openai:gpt-4o-mini
+```
+
+**Backends are selectable** — keyless or API key:
+
+| Role | flag | keyless | API key |
+|---|---|---|---|
+| SkillOpt edit generator | `--opt-backend` | `claude-code` (→ SkillOpt `claude_chat`, local CLI) | `openai` / `qwen` / `minimax` |
+| Spec generate + score | `--rollout-provider` | `claude-cli` | `anthropic:<model>` / `openai:<model>` |
+
+If SkillOpt's reflect yields no usable patch, the loop falls back to RepoSkillOpt's own
+`judge.propose_edit` so a run always makes progress. Output goes to
+`<repo>/.reposkillopt/best_skill.md` (repository-scoped — not the canonical skill).
+
+> The full `optimize-repo` loop makes real model calls; the deterministic parts (backend
+> selection, the SkillOpt apply/gate chain, rollout shaping, digest builder) are unit-tested,
+> and the live loop is validated by running it.
+
 ## Tests
 
 ```sh
