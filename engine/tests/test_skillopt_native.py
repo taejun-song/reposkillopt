@@ -51,6 +51,29 @@ class TestSkillOptNative(unittest.TestCase):
         self.assertIn("REPOSITORY:", digest)
         self.assertLessEqual(len(digest), 8000)
 
+    def test_snap_patch_resolves_anchor_and_applies(self):
+        # SkillOpt's analyst returns a near-verbatim/truncated target; snap -> exact -> apply.
+        from skillopt.optimizer import apply_patch
+        skill = ("# Skill\n\n(e) **Trace behavior from entrypoint to core logic and side "
+                 "effects.** Do at least one.\n")
+        raw = {"patch": {"edits": [{
+            "op": "replace",
+            "target": "(e) **Trace behavior from entrypoint to core logic and side effects.** ...",
+            "content": "(e) **Trace TWO behaviors end to end with citations.**",
+        }], "reasoning": "deeper tracing"}}
+        snapped = N._snap_patch(skill, raw)
+        self.assertEqual(len(snapped["edits"]), 1)
+        self.assertIn(snapped["edits"][0]["target"], skill)       # snapped to an exact substring
+        cand = apply_patch(skill, snapped)
+        self.assertIn("Trace TWO behaviors", cand)                 # SkillOpt's edit actually applied
+        self.assertNotEqual(cand, skill)
+
+    def test_snap_patch_drops_unresolvable(self):
+        skill = "# Skill\n\n- Ground every claim in evidence.\n"
+        raw = {"patch": {"edits": [{"op": "replace", "target": "no such line anywhere here xyz",
+                                    "content": "x"}], "reasoning": "r"}}
+        self.assertEqual(N._snap_patch(skill, raw)["edits"], [])
+
 
 if __name__ == "__main__":
     unittest.main()

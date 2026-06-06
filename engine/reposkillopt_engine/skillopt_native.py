@@ -23,6 +23,8 @@ makes progress.
 """
 from __future__ import annotations
 
+import difflib
+import json
 import os
 import shutil
 import tempfile
@@ -38,7 +40,7 @@ try:
     import skillopt.model as _M
     from skillopt.evaluation import evaluate_gate as _evaluate_gate
     from skillopt.gradient import run_minibatch_reflect as _reflect
-    from skillopt.optimizer import apply_patch as _apply_patch, rank_and_select as _rank_and_select
+    from skillopt.optimizer import apply_patch as _apply_patch
     HAS_SKILLOPT = True
 except Exception:  # noqa: BLE001
     HAS_SKILLOPT = False
@@ -47,6 +49,31 @@ except Exception:  # noqa: BLE001
 def require() -> None:
     if not HAS_SKILLOPT:
         raise RuntimeError("the 'skillopt' package is required; install with: pip install skillopt")
+
+
+# SkillOpt ships no default analyst prompts (its built-in envs supply their own), so we
+# provide them. They instruct SkillOpt's optimizer LLM to emit a patch in the exact shape
+# its reflect parser expects: {"patch": {"edits": [{op,target,content}], "reasoning": ...}}.
+_ANALYST_PROMPT = """You are the optimizer in a ReflACT loop improving a REPOSITORY-UNDERSTANDING \
+skill: a Markdown document that instructs a coding agent how to analyze a code repository and \
+produce an evidence-grounded Repository Specification.
+
+You are shown the current skill and one or more trajectories. Each trajectory is a Repository \
+Specification the skill produced for a repository, with its rubric score (0..1, higher is better; \
+15 quality dimensions + 7 deterministic checks).
+
+Propose at most L bounded edits to the SKILL itself (never to the specification) that would raise \
+the score on this and similar repositories - e.g. stronger entrypoint/process modeling, more \
+complete control/data-flow tracing, better deployment and risk detection, stricter \
+evidence/citation discipline. Keep edits GENERIC (useful across repositories), not specific to one repo.
+
+Output ONLY a JSON object of exactly this shape (no prose around it):
+{"patch": {"edits": [{"op": "append|insert_after|replace|delete", "target": "<exact verbatim \
+substring copied from the current skill; empty string for append>", "content": "<the new text>"}], \
+"reasoning": "<one sentence>"}}
+
+Rules: every `target` except for op=append MUST be an exact, verbatim substring of the current \
+skill. Keep each edit small and reviewable. Do not rewrite the whole skill."""
 
 
 # ── backend selection (keyless local CLI or API key) ─────────────────────────
@@ -150,6 +177,59 @@ def _rollout_results(reward: float, spec: str, task: RepoTask) -> list[dict]:
     }]
 
 
+def _write_conversation(pred_dir: str, task: RepoTask, skill_text: str, spec: str) -> None:
+    """Write the trajectory SkillOpt's analyst reads (<pred_dir>/<id>/conversation.json)."""
+    d = os.path.join(pred_dir, str(task.name))
+    os.makedirs(d, exist_ok=True)
+    conversation = [
+        {"role": "system", "content": "Apply the repository-understanding skill and produce "
+                                      "an evidence-grounded Repository Specification."},
+        {"role": "user", "content": f"Repository: {task.name}\n{task.digest}"},
+        {"role": "assistant", "content": spec[:12000]},
+    ]
+    with open(os.path.join(d, "conversation.json"), "w") as f:
+        json.dump(conversation, f)
+
+
+def _snap_target(skill_text: str, target: str) -> str | None:
+    """Snap an LLM-proposed (possibly paraphrased) target to an exact substring of the skill.
+
+    SkillOpt's analyst sometimes returns a near-verbatim anchor; `apply_patch` needs an exact
+    match. Return an exact substring, or None if no confident match.
+    """
+    if not target:
+        return ""
+    if target in skill_text:
+        return target
+    first = next((ln for ln in target.strip().splitlines() if ln.strip()), "")
+    lines = skill_text.splitlines()
+    key = first.strip()[:40]
+    if key:
+        hits = [ln for ln in lines if key in ln]
+        if len(hits) == 1:
+            return hits[0]
+    close = difflib.get_close_matches(first, lines, n=1, cutoff=0.65)
+    return close[0] if close else None
+
+
+def _snap_patch(skill_text: str, patch: dict) -> dict:
+    """Return the inner patch with each edit's target snapped to an exact skill substring.
+
+    Drops edits whose target cannot be confidently resolved (so apply_patch never silently no-ops).
+    """
+    inner = patch.get("patch", patch) if isinstance(patch, dict) else patch
+    edits = (inner or {}).get("edits", []) if isinstance(inner, dict) else []
+    out = []
+    for e in edits:
+        if str(e.get("op")) == "append":
+            out.append(e)
+            continue
+        snapped = _snap_target(skill_text, e.get("target", ""))
+        if snapped:
+            out.append({**e, "target": snapped})
+    return {"edits": out, "reasoning": (inner or {}).get("reasoning", "")}
+
+
 # ── the loop: SkillOpt generates/ranks/applies/gates the edits ───────────────
 @dataclass
 class NativeRound:
@@ -181,21 +261,27 @@ def optimize_repo(skill_text: str, version: str, task: RepoTask, *,
 
     for i in range(1, rounds + 1):
         _, spec, _ = _score_skill(prov, res.skill_text, task)
-        results = _rollout_results(cur_reward, spec, task)
+        # Frame the trajectory as improvable (binary hard=0) so SkillOpt's error analyst engages.
+        result = _rollout_results(cur_reward, spec, task)[0]
+        result["hard"] = 0
+        result["fail_reason"] = (f"spec scored {cur_reward:.2f}/1.0 — improve process/scheduler "
+                                 "modeling, control/data-flow tracing depth, and risk detection")
 
-        # 1) SkillOpt generates a patch (ReflACT reflect); fall back to our proposer.
+        # 1) SkillOpt generates a patch via its ReflACT optimizer LLM; snap anchors so it applies.
         patch, source = None, "skillopt-reflect"
         try:
             with tempfile.TemporaryDirectory() as td:
-                patches = _reflect(results=results, skill_content=res.skill_text,
-                                   prediction_dir=os.path.join(td, "pred"),
-                                   patches_dir=os.path.join(td, "patches"),
-                                   workers=1, failure_only=False,
-                                   minibatch_size=1, edit_budget=edit_budget)
-            patch = next((p for p in (patches or []) if p), None)
-            if patch:
-                ranked = _rank_and_select(res.skill_text, patch, max_edits=edit_budget)
-                patch = ranked or patch
+                pred = os.path.join(td, "pred")
+                _write_conversation(pred, task, res.skill_text, spec)   # analyst reads conversation.json
+                patches = _reflect(results=[result], skill_content=res.skill_text,
+                                   prediction_dir=pred, patches_dir=os.path.join(td, "patches"),
+                                   workers=1, failure_only=True,
+                                   minibatch_size=1, edit_budget=edit_budget,
+                                   error_system=_ANALYST_PROMPT, success_system=_ANALYST_PROMPT)
+            raw = next((p for p in (patches or []) if p), None)
+            if raw:
+                snapped = _snap_patch(res.skill_text, raw)
+                patch = snapped if snapped.get("edits") else None
         except Exception:  # noqa: BLE001 - reflect is the riskiest call; degrade gracefully
             patch = None
         if not patch:
@@ -204,8 +290,9 @@ def optimize_repo(skill_text: str, version: str, task: RepoTask, *,
             if prop.is_terminal or not prop.eligible():
                 res.history.append(NativeRound(i, source, "no-patch", False))
                 continue
+            anchor = _snap_target(res.skill_text, prop.anchor) or prop.anchor
             patch = {"edits": [{"op": "replace" if prop.edit_kind != "ADD" else "insert_after",
-                                "target": prop.anchor, "content": prop.payload}]}
+                                "target": anchor, "content": prop.payload}]}
 
         # 2) SkillOpt applies the patch.
         candidate = _apply_patch(res.skill_text, patch)
