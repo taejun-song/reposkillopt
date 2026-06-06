@@ -84,7 +84,7 @@ def cmd_optimize_repo(args) -> int:
           f"rollout={args.rollout_provider}, rounds={args.rounds}", file=sys.stderr)
     res = optimize_repo(skill, args.version, task,
                         opt_backend=args.opt_backend, provider=args.rollout_provider,
-                        rounds=args.rounds)
+                        rounds=args.rounds, timeout=args.timeout)
     out = Path(args.out) if args.out else (repo / ".reposkillopt" / "best_skill.md")
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(res.skill_text)
@@ -121,6 +121,8 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--rollout-provider", default="claude-cli",
                    help="spec generate/score provider: claude-cli | anthropic:<model> | openai:<model>")
     r.add_argument("--rounds", type=int, default=2)
+    r.add_argument("--timeout", type=float, default=600.0,
+                   help="per model-call timeout in seconds (spec generation is slow on big repos)")
     r.add_argument("--version", default="0.2.0")
     r.add_argument("--out", help="default: <repo>/.reposkillopt/best_skill.md")
     r.set_defaults(func=cmd_optimize_repo)

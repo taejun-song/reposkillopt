@@ -249,18 +249,19 @@ class NativeResult:
 
 def optimize_repo(skill_text: str, version: str, task: RepoTask, *,
                   opt_backend: str = "claude-code", provider: str = "claude-cli",
-                  rounds: int = 2, edit_budget: int = 3) -> NativeResult:
+                  rounds: int = 2, edit_budget: int = 3, timeout: float = 600.0) -> NativeResult:
     """Optimize the skill for one repo, with SkillOpt owning edit generation + the gate."""
     require()
     configure_opt_backend(opt_backend)
-    prov = make_provider(provider)
+    # spec generation can be slow on large repos; allow a generous per-call timeout.
+    prov = make_provider(provider, **({} if provider.startswith("fake") else {"timeout": timeout}))
     res = NativeResult(skill_text=skill_text, version=version)
 
-    cur_reward, _, _ = _score_skill(prov, res.skill_text, task)
+    cur_reward, cur_spec, _ = _score_skill(prov, res.skill_text, task)
     best_skill, best_score, best_step = res.skill_text, cur_reward, 0
 
     for i in range(1, rounds + 1):
-        _, spec, _ = _score_skill(prov, res.skill_text, task)
+        spec = cur_spec   # reuse the current skill's spec (avoid a redundant regeneration per round)
         # Frame the trajectory as improvable (binary hard=0) so SkillOpt's error analyst engages.
         result = _rollout_results(cur_reward, spec, task)[0]
         result["hard"] = 0
@@ -296,7 +297,7 @@ def optimize_repo(skill_text: str, version: str, task: RepoTask, *,
 
         # 2) SkillOpt applies the patch.
         candidate = _apply_patch(res.skill_text, patch)
-        cand_reward, _, _ = _score_skill(prov, candidate, task)
+        cand_reward, cand_spec, _ = _score_skill(prov, candidate, task)
 
         # 3) SkillOpt's gate decides accept/reject.
         decision = _evaluate_gate(candidate_skill=candidate, cand_hard=cand_reward,
@@ -307,7 +308,7 @@ def optimize_repo(skill_text: str, version: str, task: RepoTask, *,
         if accepted:
             res.skill_text = candidate
             res.version = bump(res.version, "minor")
-            cur_reward = cand_reward
+            cur_reward, cur_spec = cand_reward, cand_spec   # carry the improved spec forward
             res.accepted += 1
             if decision.action == "accept_new_best":
                 best_skill, best_score, best_step = candidate, cand_reward, i
