@@ -69,6 +69,32 @@ def cmd_optimize(args) -> int:
     return 0
 
 
+def cmd_optimize_repo(args) -> int:
+    from .skillopt_native import HAS_SKILLOPT, RepoTask, build_repo_digest, optimize_repo
+    if not HAS_SKILLOPT:
+        print("error: the 'skillopt' package is required (pip install skillopt)", file=sys.stderr)
+        return 1
+    repo = Path(args.repo)
+    if not repo.is_dir():
+        print(f"error: not a directory: {repo}", file=sys.stderr)
+        return 2
+    skill = Path(args.skill).read_text()
+    task = RepoTask(name=repo.name, digest=build_repo_digest(str(repo)))
+    print(f"optimizing skill for {repo.name} — SkillOpt opt-backend={args.opt_backend}, "
+          f"rollout={args.rollout_provider}, rounds={args.rounds}", file=sys.stderr)
+    res = optimize_repo(skill, args.version, task,
+                        opt_backend=args.opt_backend, provider=args.rollout_provider,
+                        rounds=args.rounds)
+    out = Path(args.out) if args.out else (repo / ".reposkillopt" / "best_skill.md")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(res.skill_text)
+    print(f"final version {res.version}; {res.accepted} accepted of {len(res.history)} rounds; wrote {out}")
+    for rd in res.history:
+        print(f"  round {rd.index}: [{rd.source}] {rd.action} "
+              f"({'ACCEPT' if rd.accepted else 'reject'})", file=sys.stderr)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="reposkillopt-engine")
     p.add_argument("--provider", default="fake", help="fake | anthropic:<model> | openai:<model>")
@@ -85,6 +111,19 @@ def main(argv: list[str] | None = None) -> int:
     o.add_argument("--backend", choices=["native", "skillopt"],
                    help="native rubric gate (default) | real microsoft/SkillOpt gate")
     o.set_defaults(func=cmd_optimize)
+
+    r = sub.add_parser("optimize-repo",
+                       help="optimize a skill FOR ONE REPO, fully driven by SkillOpt's ReflACT")
+    r.add_argument("repo", help="path to the target repository")
+    r.add_argument("--skill", required=True, help="path to the starting SKILL.md")
+    r.add_argument("--opt-backend", default="claude-code",
+                   help="SkillOpt edit-generator backend: claude-code (keyless) | openai | qwen | minimax")
+    r.add_argument("--rollout-provider", default="claude-cli",
+                   help="spec generate/score provider: claude-cli | anthropic:<model> | openai:<model>")
+    r.add_argument("--rounds", type=int, default=2)
+    r.add_argument("--version", default="0.2.0")
+    r.add_argument("--out", help="default: <repo>/.reposkillopt/best_skill.md")
+    r.set_defaults(func=cmd_optimize_repo)
 
     args = p.parse_args(argv)
     return args.func(args)
