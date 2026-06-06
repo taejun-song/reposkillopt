@@ -31,7 +31,7 @@ from dataclasses import dataclass, field
 from .judge import generate_spec, propose_edit, score_spec
 from .providers import make_provider
 from .providers.base import LLMProvider
-from .rubric import RepoResult, ScoreCard, aggregate
+from .rubric import ScoreCard, aggregate
 from .version import bump
 
 try:
