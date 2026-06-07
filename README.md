@@ -6,7 +6,7 @@ RepoSkillOpt is a portable, vendor-neutral **Markdown skill** (plus optional too
 
 - 🧭 **Evidence-grounded** — facts carry citations; hypotheses are marked `[inference]`; an honest `[unknown]` beats a confident guess.
 - 🔌 **Works anywhere** — one skill, thin adapters per agent; installs online **or fully offline**; runs against API, OSS, or a local LLM.
-- 🎯 **Self-tuning per repo** — an optional engine specializes the skill for *your* codebase, scored by how well its citations actually resolve against real files.
+- 🎯 **Self-tuning per repo** — an optional engine specializes the skill for *your* codebase, scored by how well its citations actually resolve against real files (measured: **74% → 98%** grounding on `pallets/click`).
 
 Not a service, not a database, not a fine-tune — just a skill, templates, adapters, and a rubric.
 
@@ -56,6 +56,17 @@ $ reposkillopt-engine optimize-repo ./my-service --skill skills/repo-skillopt/SK
   wrote skill -> ./my-service/.reposkillopt/best_skill.md
   wrote spec  -> ./my-service/.reposkillopt/specs/optimized-repository-specification.md
 ```
+
+**Measured, not hand-waved.** A grounding benchmark scores a spec by how many of its
+`file:line` citations actually resolve against the real repo. On `pallets/click`, optimizing the
+skill for the repo raised that from **74% → 98%** — because the optimizer *learned, from the
+repo's own grounding failures, to cite real filesystem paths* (`src/click/core.py:57`, not
+`core.py:57`). Method + reproduce in [`rubric/benchmarks/`](rubric/benchmarks/).
+
+| Skill on `pallets/click@8.1.7` | Citations that resolve |
+|---|---|
+| Canonical (baseline) | 74% |
+| **Per-repo optimized** | **98%** |
 
 ## 🧩 Architecture at a glance
 
