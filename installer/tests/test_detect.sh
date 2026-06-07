@@ -5,7 +5,7 @@ run_test() {
   "$INSTALL" --dest "$d" >/dev/null 2>&1; assert_exit "$?" 0 "detect claude-code" || return 1
   assert_file "$d/.claude/skills/repo-skillopt/SKILL.md" "detected install placed" || return 1
 
-  # ambiguous: bare AGENTS.md matches both codex and opencode
+  # ambiguous: bare AGENTS.md matches both legacy targets (codex-agentsmd + opencode-agentsmd)
   d2="$WORK/b"; mkdir -p "$d2"; : > "$d2/AGENTS.md"
   "$INSTALL" --dest "$d2" >/dev/null 2>&1; assert_exit "$?" 3 "ambiguous exit 3" || return 1
   assert_nofile "$d2/.reposkillopt/.install-manifest" "ambiguous wrote nothing" || return 1

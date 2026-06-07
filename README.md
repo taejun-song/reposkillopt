@@ -125,14 +125,22 @@ Or, after cloning this repo, run it directly (audit-friendly, fully offline):
 /path/to/reposkillopt/installer/reposkillopt-install --agent claude-code --dest /path/to/target-repo
 ```
 
-| Target | `--agent` | Installs to |
-|---|---|---|
-| Claude Code | `claude-code` | `<dest>/.claude/skills/repo-skillopt/SKILL.md` |
-| Codex | `codex` | `<dest>/AGENTS.md` |
-| OpenCode | `opencode` | `<dest>/AGENTS.md` |
-| Generic | `generic` | `<dest>/skill.md` + `system-prompt-fragment.md` (requires `--dest`) |
+RepoSkillOpt installs as a **namespaced Agent Skill** (a `repo-skillopt/SKILL.md` folder) into each harness's native skills directory — collision-free, and it **never touches a repo's `AGENTS.md`**:
 
-Useful flags: `--scaffold` (create the `.reposkillopt/` dirs), `--dry-run`, `--list`, `--uninstall <agent>`. With no `--agent` the installer auto-detects the harness and, if that's ambiguous (e.g. both Codex and OpenCode use `AGENTS.md`), exits with the valid targets rather than guessing. See `installer/README.md` for full details.
+| Target | `--agent` | Installs to | Read by |
+|---|---|---|---|
+| Claude Code | `claude-code` | `<dest>/.claude/skills/repo-skillopt/SKILL.md` | Claude Code |
+| Codex | `codex` | `<dest>/.agents/skills/repo-skillopt/SKILL.md` | Codex |
+| OpenCode | `opencode` | `<dest>/.opencode/skills/repo-skillopt/SKILL.md` | OpenCode |
+| Cursor | `cursor` | `<dest>/.cursor/skills/repo-skillopt/SKILL.md` | Cursor |
+| **Cross-tool** | `agents` | `<dest>/.agents/skills/repo-skillopt/SKILL.md` | **Codex + OpenCode + Cursor** |
+| Generic | `generic` | `<dest>/skill.md` + `system-prompt-fragment.md` (requires `--dest`) | prompt-fragment harnesses |
+
+Since the SKILL.md *Agent Skills* format is now a cross-tool open standard, the `codex`/`opencode`/`cursor`/`agents` targets install the **canonical skill** directly. One `--agent agents` install is read by Codex, OpenCode, and Cursor at once.
+
+**Legacy single-file `AGENTS.md`** is still available via `--agent codex-agentsmd` / `opencode-agentsmd`, but it **never silently overwrites** an existing `AGENTS.md` it didn't create: it refuses unless `--force`, and `--force` first backs the file up to `AGENTS.md.bak`.
+
+Useful flags: `--scaffold` (create the `.reposkillopt/` dirs), `--dry-run`, `--list`, `--uninstall <agent>`. With no `--agent` the installer auto-detects the harness and, if that's ambiguous, exits with the valid targets rather than guessing. See `installer/README.md` for full details.
 
 ### Quick start (Claude Code)
 
@@ -156,12 +164,15 @@ Useful flags: `--scaffold` (create the `.reposkillopt/` dirs), `--dry-run`, `--l
 
 ### Other agent harnesses
 
-| Harness | Adapter file | Install location |
+| Harness | Source | Install location |
 |---|---|---|
 | Claude Code | `adapters/claude-code/SKILL.md` | `<target-repo>/.claude/skills/repo-skillopt/SKILL.md` |
-| Codex | `adapters/codex/AGENTS.md` | `<target-repo>/AGENTS.md` |
-| OpenCode | `adapters/opencode/AGENTS.md` | `<target-repo>/AGENTS.md` |
+| Codex | canonical `skills/repo-skillopt/SKILL.md` | `<target-repo>/.agents/skills/repo-skillopt/SKILL.md` |
+| OpenCode | canonical `skills/repo-skillopt/SKILL.md` | `<target-repo>/.opencode/skills/repo-skillopt/SKILL.md` |
+| Cursor | canonical `skills/repo-skillopt/SKILL.md` | `<target-repo>/.cursor/skills/repo-skillopt/SKILL.md` |
+| Cross-tool | canonical `skills/repo-skillopt/SKILL.md` | `<target-repo>/.agents/skills/repo-skillopt/SKILL.md` |
 | Generic / custom | `adapters/generic/skill.md` + `system-prompt-fragment.md` | per harness convention |
+| Codex/OpenCode (legacy `AGENTS.md`) | `adapters/{codex,opencode}/AGENTS.md` | `<target-repo>/AGENTS.md` (opt-in; non-destructive) |
 
 See each adapter's own guide for installation specifics and "Known cross-agent differences":
 

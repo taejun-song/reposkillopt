@@ -1,5 +1,12 @@
 # Adapter — OpenCode
 
+> **Primary install is now the native skill directory.** OpenCode reads the standard Agent Skills
+> format (from `.opencode/skills/`, `.claude/skills/`, and `.agents/skills/`), so the recommended
+> install is `reposkillopt-install --agent opencode` → `.opencode/skills/repo-skillopt/SKILL.md`
+> (the canonical skill, namespaced and collision-free). This `AGENTS.md` adapter is retained as an
+> **opt-in legacy** mode (`--agent opencode-agentsmd`), which never overwrites a pre-existing
+> `AGENTS.md` without `--force` (and `--force` backs it up).
+
 This adapter wraps the canonical RepoSkillOpt skill (`skills/repo-skillopt/SKILL.md`) for use with [OpenCode](https://github.com/sst/opencode)-style agents that read instructions from a top-level `AGENTS.md` file.
 
 ## Install
