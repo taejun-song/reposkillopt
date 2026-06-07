@@ -46,7 +46,7 @@ Paths are relative to repo root. `[P]` = parallelizable (different files, no inc
 
 - [x] T015 Full engine suite + pyflakes green (no regression vs T001 floor).
 - [ ] T016 Live end-to-end on `eco-standard-wiki` (keyless): run `optimize-repo --rounds 2 --timeout 900`; confirm both outputs written, report accepted-edit count, best_reward, and citation rate (SC-004/SC-005). Record the result.
-- [ ] T017 Update `engine/README` / `CLAUDE.md` "Recent Changes" note if present; ensure quickstart commands match the shipped CLI.
+- [x] T017 Update `engine/README` / `CLAUDE.md` "Recent Changes" note if present; ensure quickstart commands match the shipped CLI.
 
 ## Dependencies
 
