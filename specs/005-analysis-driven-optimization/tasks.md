@@ -45,7 +45,7 @@ Paths are relative to repo root. `[P]` = parallelizable (different files, no inc
 ## Phase 6: Polish & live validation
 
 - [x] T015 Full engine suite + pyflakes green (no regression vs T001 floor).
-- [ ] T016 Live end-to-end on `eco-standard-wiki` (keyless): run `optimize-repo --rounds 2 --timeout 900`; confirm both outputs written, report accepted-edit count, best_reward, and citation rate (SC-004/SC-005). Record the result.
+- [x] T016 Live end-to-end on `eco-standard-wiki` (keyless, 2026-06-07): **1 accepted of 2 rounds** (round 1 `accept_new_best`), reward **0.775**, citation resolution **95%** (182/192). Both outputs written; canonical untouched. The accepted edit is repo-specialized — bans language-module-path citations (e.g. `eco.cli.main:app`) and comma-list line numbers, both of which grounding flagged as unresolved on this repo. Contrast: the pre-005 digest-based run was 0/2.
 - [x] T017 Update `engine/README` / `CLAUDE.md` "Recent Changes" note if present; ensure quickstart commands match the shipped CLI.
 
 ## Dependencies
