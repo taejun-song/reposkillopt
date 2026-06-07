@@ -1,10 +1,63 @@
 # RepoSkillOpt
 
-A **portable, skill-first** package that teaches any coding-agent harness — Claude Code, Codex, OpenCode, GitHub Copilot-style agents, custom local agents — a disciplined workflow for understanding legacy repositories through evidence-grounded analysis, recurrent human feedback, and bounded skill convergence.
+> **Teach any coding agent to understand a legacy repo — and produce an evidence-grounded spec it can't fake.**
 
-RepoSkillOpt is not a service, not a CLI, not a database, and not a model fine-tune. It is a vendor-neutral Markdown skill plus a small set of templates, adapter examples, and an evaluation rubric.
+RepoSkillOpt is a portable, vendor-neutral **Markdown skill** (plus optional tooling) that gives Claude Code, Codex, OpenCode, or any custom agent a disciplined way to read an unfamiliar codebase: every major claim is **labeled and cited to a real `file:line`**, uncertainty is called out, and your feedback is folded back into the skill itself.
 
-## Architecture at a glance
+- 🧭 **Evidence-grounded** — facts carry citations; hypotheses are marked `[inference]`; an honest `[unknown]` beats a confident guess.
+- 🔌 **Works anywhere** — one skill, thin adapters per agent; installs online **or fully offline**; runs against API, OSS, or a local LLM.
+- 🎯 **Self-tuning per repo** — an optional engine specializes the skill for *your* codebase, scored by how well its citations actually resolve against real files.
+
+Not a service, not a database, not a fine-tune — just a skill, templates, adapters, and a rubric.
+
+## ⚡ Quick start
+
+From inside the repository you want to understand:
+
+```sh
+# install the skill for your agent  (claude-code shown; also: codex | opencode | generic)
+curl -fsSL https://raw.githubusercontent.com/taejun-song/reposkillopt/main/install.sh | sh -s -- --agent claude-code
+```
+
+Then open your agent and ask:
+
+> *“Help me understand this repository.”*
+
+The skill runs a seven-stage workflow and writes a Repository Specification to `.reposkillopt/specs/`. Correct it in plain prose — each correction is recorded and the spec is revised. No API key, no service; offline from a clone works too: `installer/reposkillopt-install --agent claude-code --dest .`.
+
+## 📄 What it produces
+
+A 19-section spec where **every major claim is labeled and cited**. Real excerpt — analysing [`pallets/click@8.1.7`](https://github.com/pallets/click):
+
+```markdown
+## Repository overview
+**[fact]** Click is "a simple Python module … to make writing command line scripts fun"
+— distributed as the `click` package (`src/click/__init__.py:1-5`).
+**[inference]** The codebase is library-shaped (no application entrypoint of its own).
+Basis: the public API is exposed only via `__init__.py` re-exports; no `__main__.py`.
+
+## Known risks
+- **[fact]** `filterwarnings = error` makes any new warning a test failure
+  (`setup.cfg:41-42`) — an upstream deprecation can break the suite even if Click is unchanged.
+- **[fact]** Windows-only code paths are platform-sensitive: `src/click/_winconsole.py:30`
+  asserts `sys.platform == "win32"`; Linux CI gives no signal.
+```
+
+Full samples for every adapter live in [`examples/reference-output/`](examples/reference-output/).
+
+**Optional — specialize the skill for your repo.** The engine tunes a per-repo skill and reports how grounded it is:
+
+```console
+$ reposkillopt-engine optimize-repo ./my-service --skill skills/repo-skillopt/SKILL.md --rounds 2
+  building evidence pack … 7 files embedded
+  round 1: accept_new_best     round 2: reject
+  final version 0.3.0; 1 accepted of 2 rounds
+  reward 0.78; citation resolution 95%
+  wrote skill -> ./my-service/.reposkillopt/best_skill.md
+  wrote spec  -> ./my-service/.reposkillopt/specs/optimized-repository-specification.md
+```
+
+## 🧩 Architecture at a glance
 
 ```text
   CANONICAL   skills/repo-skillopt/SKILL.md      — vendor/repo-neutral, source of truth
@@ -57,7 +110,7 @@ RepoSkillOpt is deliberately **layered** — this is the key mental model:
 So *"each repository can have a different, tuned skill"* is achieved **without** polluting the
 shared base: the canonical stays generic; specialization is an opt-in layer on top.
 
-## What you get
+## 📦 What you get
 
 ```text
 skills/repo-skillopt/SKILL.md      # The canonical skill — single source of truth
@@ -95,7 +148,7 @@ examples/reference-output/         # Sample outputs against pallets/click@8.1.7 
 .gitignore                         # Excludes local working artifacts and build-time tooling (.claude/, .specify/, CLAUDE.md)
 ```
 
-## How to use it across agents
+## 🚀 Install & use across agents
 
 ### Working-artifact layout
 
@@ -142,7 +195,7 @@ Since the SKILL.md *Agent Skills* format is now a cross-tool open standard, the 
 
 Useful flags: `--scaffold` (create the `.reposkillopt/` dirs), `--dry-run`, `--list`, `--uninstall <agent>`. With no `--agent` the installer auto-detects the harness and, if that's ambiguous, exits with the valid targets rather than guessing. See `installer/README.md` for full details.
 
-### Quick start (Claude Code)
+### Manual install (Claude Code)
 
 1. Copy the Claude Code adapter into the target environment:
    ```sh
@@ -183,7 +236,7 @@ See each adapter's own guide for installation specifics and "Known cross-agent d
 
 For a full end-to-end walkthrough against `pallets/click@8.1.7`, see `specs/001-reposkillopt-skill/quickstart.md`.
 
-## How to provide feedback
+## 🗣️ Provide feedback
 
 Feedback is a first-class input. After the agent produces a Repository Specification:
 
@@ -193,7 +246,7 @@ Feedback is a first-class input. After the agent produces a Repository Specifica
    - `candidate-for-generic` — may be cited by a future Skill Edit Proposal targeting the canonical skill.
 3. The agent revises the Repository Specification and updates the rollout log.
 
-## How to propose canonical skill edits
+## 🔁 Propose canonical skill edits
 
 When several Feedback Items point at the same gap in the canonical skill, ask the agent to summarize the pattern and propose edits:
 
@@ -201,13 +254,13 @@ When several Feedback Items point at the same gap in the canonical skill, ask th
 2. Each proposal is bounded (≤5 minutes of human review), categorized as `ADD` / `REPLACE` / `DELETE` / `REORDER` / `SPECIALIZE` / `GENERALIZE`, and references the supporting Feedback Item ids.
 3. A maintainer accepts or rejects each proposal. Accepted edits are applied to `skills/repo-skillopt/SKILL.md` (in this repository) and bump the canonical `version:`. Rejected proposals are preserved with rationale.
 
-## Evaluation
+## 🧪 Evaluation
 
 See `rubric/evaluation-rubric.md` (15 qualitative dimensions, scored 0–3) and `rubric/deterministic-checks.md` (7 pass/fail checks). The rubric is technology-agnostic and is the same instrument used to compare canonical skill versions over time.
 
 **Validation gate.** Accepting a `scope: generic` skill edit into the canonical skill now requires a passing **validation gate**: the candidate edit must regenerate specifications for a commit-pinned **held-out reference set** (disjoint from the repositories that motivated it) without regressing any per-dimension rubric score and without any deterministic-check regression. See `rubric/validation-gate.md` (procedure + criterion), `rubric/held-out-set.md` (the held-out repos), and `rubric/gates/` (the reports). This is canonical from skill version `0.2.0`. For high-stakes edits the gate can be scored in **majority mode** — N independent scorers (odd, ≥3) with per-dimension majority aggregation and a `HELD` outcome for contested potential regressions; see `rubric/validation-gate.md` → *Majority mode*. (Majority mode is scoring methodology only — it requires no canonical or adapter change.)
 
-## Executable engine (optional, opt-in)
+## ⚙️ Executable engine (optional, opt-in)
 
 An optional Python **convergence engine** under [`engine/`](engine/README.md) makes both
 layers *runnable*, over a provider-agnostic LLM layer (Anthropic, OpenAI, or any
@@ -236,11 +289,11 @@ engine genuinely runs on it.
 > adapters, templates, rubric, and installer all work without it, and it never edits the
 > canonical skill at run time. See `engine/README.md`.
 
-## Versioning
+## 🏷️ Versioning
 
 The canonical skill follows [Semantic Versioning](https://semver.org/). The `version:` field in `skills/repo-skillopt/SKILL.md` is the source of truth; every adapter mirrors it via its `canonical_version:` field (in YAML front matter or, for environments that forbid YAML front matter, in an HTML-comment metadata block at the top of the adapter file). Changes are recorded in `skills/repo-skillopt/CHANGELOG.md` using [Keep a Changelog](https://keepachangelog.com/) conventions.
 
-## Limitations
+## ⚠️ Limitations
 
 RepoSkillOpt does **not** claim universal repository understanding. In particular:
 
@@ -250,7 +303,7 @@ RepoSkillOpt does **not** claim universal repository understanding. In particula
 - The skill performs no deep static analysis; it relies on what an ordinary agent harness can read with file and shell access.
 - The skill runs entirely locally and does not exfiltrate repository contents to external services unless your chosen agent harness is independently configured to do so.
 
-## License
+## 📜 License
 
 Apache-2.0. See `LICENSE`.
 
