@@ -5,7 +5,9 @@ validation gate (features 003/004) and the convergence loop over a provider-agno
 LLM layer. The Markdown skill remains fully usable without this engine.
 """
 from . import skillopt_backend, skillopt_native
+from .evidence import EvidencePack, build_evidence_pack
 from .gate import GateConfig, GateResult, HeldOutRepo, run_gate
+from .grounding import GroundingResult, ground_spec, parse_citations
 from .optimizer import OptimizerConfig, OptimizerResult, optimize
 from .proposal import Proposal
 from .providers import FakeProvider, make_provider
@@ -21,5 +23,7 @@ __all__ = [
     "Proposal", "FakeProvider", "make_provider",
     "DIMENSIONS", "CHECKS", "ScoreCard", "Verdict",
     "skillopt_backend", "HAS_SKILLOPT",
+    "EvidencePack", "build_evidence_pack",
+    "GroundingResult", "ground_spec", "parse_citations",
     "skillopt_native", "RepoTask", "build_repo_digest", "optimize_repo", "__version__",
 ]

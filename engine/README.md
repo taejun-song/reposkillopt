@@ -108,8 +108,21 @@ Where the `skillopt` backend above uses SkillOpt for two steps (apply + gate),
 `reposkillopt_engine/skillopt_native.py` hands the **whole optimization** to SkillOpt's
 own ReflACT machinery — **edit generation** (`gradient.run_minibatch_reflect`), **ranking**
 (`rank_and_select`), **patch apply** (`apply_patch`), and the **gate** (`evaluate_gate`).
-RepoSkillOpt supplies only the reward (produce a spec for the repo, score it with the rubric).
-The result is a per-repo `best_skill.md`; the **canonical, repo-neutral skill is never touched**.
+
+RepoSkillOpt supplies the **reward**, grounded in the real repository (feature 005):
+
+1. a **cached evidence pack** (`evidence.build_evidence_pack`) is built once per run — repo
+   structure, manifests, entrypoints, and **line-numbered** key-file contents — and reused for
+   every candidate (no per-candidate re-exploration);
+2. each candidate skill generates a spec from that pack, which is scored as
+   `reward = 0.5 × rubric + 0.5 × deterministic-pass-rate`, where the deterministic part
+   (`grounding.ground_spec`) **resolves every `file:line` / `file:Symbol` citation against the
+   actual files** — so a spec cannot win by fabricating citations;
+3. the concrete grounding failures (unresolved citations, missing sections, uncited claims) are
+   fed into SkillOpt's reflect, so edits target the repo's real gaps.
+
+A run emits **two outputs**: the per-repo `best_skill.md` and the best
+`specs/optimized-repository-specification.md`. The **canonical, repo-neutral skill is never touched**.
 
 ```sh
 # keyless — SkillOpt's edit generator runs on the local Claude CLI (no API key):
@@ -129,12 +142,13 @@ OPENAI_API_KEY=… python3 -m reposkillopt_engine optimize-repo /path/to/target-
 | Spec generate + score | `--rollout-provider` | `claude-cli` | `anthropic:<model>` / `openai:<model>` |
 
 If SkillOpt's reflect yields no usable patch, the loop falls back to RepoSkillOpt's own
-`judge.propose_edit` so a run always makes progress. Output goes to
-`<repo>/.reposkillopt/best_skill.md` (repository-scoped — not the canonical skill).
+`judge.propose_edit` so a run always makes progress. Outputs (repository-scoped — never the
+canonical skill): `<repo>/.reposkillopt/best_skill.md` and
+`<repo>/.reposkillopt/specs/optimized-repository-specification.md`.
 
 > The full `optimize-repo` loop makes real model calls; the deterministic parts (backend
-> selection, the SkillOpt apply/gate chain, rollout shaping, digest builder) are unit-tested,
-> and the live loop is validated by running it.
+> selection, the SkillOpt apply/gate chain, rollout shaping, the evidence pack, and citation
+> grounding) are unit-tested, and the live loop is validated by running it.
 
 ## Tests
 
