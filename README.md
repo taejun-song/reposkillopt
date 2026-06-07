@@ -31,6 +31,28 @@ RepoSkillOpt is not a service, not a CLI, not a database, and not a model fine-t
 Full version — relation map, function reference, schemas — in
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
+### Two layers: a generic base, then per-repo specialization
+
+RepoSkillOpt is deliberately **layered** — this is the key mental model:
+
+1. **Generic layer (the base you install everywhere).** The canonical
+   [`skills/repo-skillopt/SKILL.md`](skills/repo-skillopt/SKILL.md) is vendor- and
+   repo-neutral. Its self-improvement path (the *Skill Convergence Loop*) is intentionally
+   conservative: it accepts only edits that **generalize** across repositories, gated against a
+   held-out reference set — so the shared base never absorbs any single repo's quirks.
+
+2. **Specialization layer (one tuned skill per repository).** The optional engine's
+   [`optimize-repo`](engine/README.md) takes that base and tunes a **per-repo** skill for one
+   target repository, scoring candidate skills by how well the spec they produce is **grounded
+   in that repo** — every `file:line` / `file:Symbol` citation must resolve against the real
+   files. It writes two artifacts under the *target* repo and **never modifies the canonical
+   skill**:
+   - `<repo>/.reposkillopt/best_skill.md` — the specialized skill for this repo
+   - `<repo>/.reposkillopt/specs/optimized-repository-specification.md` — the spec it earned
+
+So *"each repository can have a different, tuned skill"* is achieved **without** polluting the
+shared base: the canonical stays generic; specialization is an opt-in layer on top.
+
 ## What you get
 
 ```text
@@ -172,17 +194,26 @@ See `rubric/evaluation-rubric.md` (15 qualitative dimensions, scored 0–3) and 
 
 ## Executable engine (optional, opt-in)
 
-An optional Python **convergence engine** under [`engine/`](engine/README.md) makes the
-validation gate and convergence loop *runnable* — propose a bounded edit → run the gate via
-a provider-agnostic LLM layer (Anthropic, OpenAI, or any OpenAI-compatible / open-source
-endpoint) → accept and bump the version only on PASS → repeat. It is the executable
-counterpart to the `rubric/validation-gate.md` methodology.
+An optional Python **convergence engine** under [`engine/`](engine/README.md) makes both
+layers *runnable*, over a provider-agnostic LLM layer (Anthropic, OpenAI, or any
+OpenAI-compatible / open-source endpoint — including a **local LLM server**, fully air-gapped
+at runtime):
+
+- **Generic convergence** — propose a bounded edit → run the validation gate → accept and bump
+  the canonical version only on PASS → repeat. The executable counterpart to
+  `rubric/validation-gate.md`.
+- **Per-repo specialization (`optimize-repo`)** — tune a specialized skill for one target
+  repository. The reward combines the rubric with **deterministic citation-grounding**: a
+  cached evidence pack is built once from the real repo, each candidate's spec is scored partly
+  by how many of its `file:line` / `file:Symbol` citations **resolve against the actual files**,
+  and the concrete grounding failures steer the next edit. Emits `best_skill.md` + the spec it
+  earned; the canonical skill is never touched.
 
 It can optionally **use the real [microsoft/SkillOpt](https://github.com/microsoft/SkillOpt)
-package** (`pip install skillopt`) as an alternate optimizer backend: `--backend skillopt`
-applies edits with SkillOpt's `apply_edit` and makes the accept/reject decision with
-SkillOpt's `evaluate_gate`. So beyond being *inspired by* SkillOpt, the engine can genuinely
-run on it.
+package** (`pip install skillopt`): `--backend skillopt` applies edits with SkillOpt's
+`apply_edit` and gates with `evaluate_gate`, and `optimize-repo` hands the **whole** ReflACT
+loop (edit generation + apply + gate) to SkillOpt. So beyond being *inspired by* SkillOpt, the
+engine genuinely runs on it.
 
 > **Scope note.** The RepoSkillOpt core is deliberately skill-first (Markdown + optional
 > shell, no service/network). The engine **intentionally crosses that line** (it calls an
