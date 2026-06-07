@@ -6,7 +6,7 @@ RepoSkillOpt is a portable, vendor-neutral **Markdown skill** (plus optional too
 
 - 🧭 **Evidence-grounded** — facts carry citations; hypotheses are marked `[inference]`; an honest `[unknown]` beats a confident guess.
 - 🔌 **Works anywhere** — one skill, thin adapters per agent; installs online **or fully offline**; runs against API, OSS, or a local LLM.
-- 🎯 **Self-tuning per repo** — an optional engine specializes the skill for *your* codebase, scored by how well its citations actually resolve against real files (measured: **74% → 98%** grounding on `pallets/click`).
+- 🎯 **Self-tuning per repo** — an optional engine specializes the skill for *your* codebase, scored by how well its citations actually resolve against real files (measured: closes grounding gaps, e.g. **74% → 98%** on `pallets/click`, **69% → 100%** on `itsdangerous`).
 
 Not a service, not a database, not a fine-tune — just a skill, templates, adapters, and a rubric.
 
@@ -58,15 +58,20 @@ $ reposkillopt-engine optimize-repo ./my-service --skill skills/repo-skillopt/SK
 ```
 
 **Measured, not hand-waved.** A grounding benchmark scores a spec by how many of its
-`file:line` citations actually resolve against the real repo. On `pallets/click`, optimizing the
-skill for the repo raised that from **74% → 98%** — because the optimizer *learned, from the
-repo's own grounding failures, to cite real filesystem paths* (`src/click/core.py:57`, not
-`core.py:57`). Method + reproduce in [`rubric/benchmarks/`](rubric/benchmarks/).
+`file:line` citations actually resolve against the real repo. Optimizing the skill *for a repo*
+closes grounding gaps where they exist — and holds steady where the baseline is already clean:
 
-| Skill on `pallets/click@8.1.7` | Citations that resolve |
-|---|---|
-| Canonical (baseline) | 74% |
-| **Per-repo optimized** | **98%** |
+| Repo (generate-mode grounding) | Canonical | Per-repo optimized |
+|---|---|---|
+| `pallets/click` | 74% | **98%** |
+| `pallets/itsdangerous` | 69% | **100%** |
+| `pallets/markupsafe` | 100% | 98% |
+| `chalk/chalk` (JS) | 100% | 100% |
+
+The two repos with real gaps were fixed (the optimizer *learned, from each repo's own grounding
+failures, to cite real filesystem paths* — `src/click/core.py:57`, not `core.py:57`); the two
+already-grounded repos held (chalk's gate accepted **0** edits — nothing to fix). Method, exact
+numbers, and reproduce steps in [`rubric/benchmarks/`](rubric/benchmarks/).
 
 ## 🧩 Architecture at a glance
 
