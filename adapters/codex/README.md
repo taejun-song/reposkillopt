@@ -1,5 +1,11 @@
 # Adapter — Codex
 
+> **Primary install is now the native skill directory.** Codex reads the standard Agent Skills
+> format, so the recommended install is `reposkillopt-install --agent codex` →
+> `.agents/skills/repo-skillopt/SKILL.md` (the canonical skill, namespaced and collision-free).
+> This `AGENTS.md` adapter is retained as an **opt-in legacy** mode (`--agent codex-agentsmd`),
+> which never overwrites a pre-existing `AGENTS.md` without `--force` (and `--force` backs it up).
+
 This adapter wraps the canonical RepoSkillOpt skill (`skills/repo-skillopt/SKILL.md`) for use with [Codex](https://github.com/openai/codex)-style agents that read instructions from a top-level `AGENTS.md` file.
 
 ## Install

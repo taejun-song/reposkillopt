@@ -7,6 +7,7 @@ EX_USAGE=2
 EX_DETECT=3
 EX_TARGET=4
 EX_DOWNGRADE=5
+EX_REFUSED=6   # legacy AGENTS.md mode declined to overwrite a foreign file
 
 # DRY_RUN is set by the CLI; default off.
 : "${DRY_RUN:=0}"

@@ -10,13 +10,14 @@ run_test() {
   assert_exit "$rc" 0 "reinstall exit 0" || return 1
   printf '%s' "$out2" | grep -qi "already up to date" || { fail "reinstall not idempotent"; return 1; }
 
-  # codex / opencode
+  # codex / opencode -> native skill dirs, canonical skill content (not AGENTS.md)
   d2="$WORK/codex"; mkdir -p "$d2"
   "$INSTALL" --agent codex --dest "$d2" >/dev/null || return 1
-  assert_same "$d2/AGENTS.md" "$REPO_ROOT/adapters/codex/AGENTS.md" "codex bytes equal" || return 1
+  assert_same "$d2/.agents/skills/repo-skillopt/SKILL.md" "$REPO_ROOT/skills/repo-skillopt/SKILL.md" "codex skill-dir bytes equal" || return 1
+  assert_nofile "$d2/AGENTS.md" "codex did not create AGENTS.md" || return 1
   d3="$WORK/oc"; mkdir -p "$d3"
   "$INSTALL" --agent opencode --dest "$d3" >/dev/null || return 1
-  assert_same "$d3/AGENTS.md" "$REPO_ROOT/adapters/opencode/AGENTS.md" "opencode bytes equal" || return 1
+  assert_same "$d3/.opencode/skills/repo-skillopt/SKILL.md" "$REPO_ROOT/skills/repo-skillopt/SKILL.md" "opencode skill-dir bytes equal" || return 1
 
   # generic places two files
   d4="$WORK/gen"; mkdir -p "$d4"

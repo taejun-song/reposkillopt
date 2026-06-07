@@ -29,9 +29,11 @@ Usage:
   reposkillopt-install --help | --version
 
 Targets: $TARGET_IDS
-  (codex and opencode both use AGENTS.md and cannot be auto-distinguished; name one.)
+  Skill-dir targets install <root>/.../skills/repo-skillopt/SKILL.md (namespaced; .agents/
+  skills/ is read by codex+opencode+cursor). The *-agentsmd targets are the legacy single-file
+  AGENTS.md mode and never overwrite a foreign AGENTS.md without --force (which backs it up).
 
-Exit codes: 0 ok/up-to-date  1 error  2 usage  3 ambiguous/undetected  4 not writable  5 refused downgrade
+Exit codes: 0 ok/up-to-date  1 error  2 usage  3 ambiguous/undetected  4 not writable  5 refused downgrade  6 refused (foreign AGENTS.md)
 EOF
 }
 
@@ -139,6 +141,21 @@ cmd_install() {
     esac
   fi
 
+  # Legacy AGENTS.md guard: never silently destroy a foreign AGENTS.md.
+  # (Skill-directory targets are namespaced and need no guard.)
+  if target_is_agentsmd "$AGENT" && [ -f "$ROOT/AGENTS.md" ] && [ -z "$_recorded" ]; then
+    if [ "$FORCE" -ne 1 ]; then
+      err "refusing to overwrite existing AGENTS.md at $ROOT (not installed by RepoSkillOpt); use --force"
+      exit "$EX_REFUSED"
+    fi
+    if [ "$DRY_RUN" = "1" ]; then
+      info "[dry-run] back up AGENTS.md -> AGENTS.md.bak"
+    else
+      copy_atomic "$ROOT/AGENTS.md" "$ROOT/AGENTS.md.bak" || exit "$EX_ERR"
+      info "backed up existing AGENTS.md -> AGENTS.md.bak"
+    fi
+  fi
+
   # Place file(s) atomically; build the manifest paths CSV.
   for _sf in $(target_source_files "$AGENT"); do
     _abs="$REPO_ROOT/$_sf"
@@ -185,7 +202,15 @@ cmd_uninstall() {
   _oldifs=$IFS; IFS=,
   for _p in $_paths; do
     IFS=$_oldifs
-    if [ "$DRY_RUN" = "1" ]; then info "[dry-run] rm $ROOT/$_p"; else rm -f -- "$ROOT/$_p"; fi
+    if [ "$DRY_RUN" = "1" ]; then
+      info "[dry-run] rm $ROOT/$_p"
+    else
+      rm -f -- "$ROOT/$_p"
+      # If the file lived in a namespaced repo-skillopt/ dir, drop that dir when empty.
+      case $_p in
+        */repo-skillopt/*) rmdir -- "$ROOT/$(dirname -- "$_p")" 2>/dev/null || : ;;
+      esac
+    fi
     IFS=,
   done
   IFS=$_oldifs
