@@ -5,6 +5,19 @@
 **Status**: Draft
 **Input**: User description: "Make per-repo SKILL.md optimization driven by how well the skill produces a thorough, evidence-grounded Repository Specification of the legacy repo — replacing the thin 8 KB-digest proxy with a cached evidence pack and deterministic citation-resolution scoring, so a run yields a specialized SKILL.md and the spec it earned."
 
+## Clarifications
+
+### Session 2026-06-07
+
+Resolved as informed engineering defaults (delegated by the requester; recorded here so they
+are explicit and reviewable). None changes feature scope.
+
+- Q: How is the reward combined from rubric quality and repo-grounded deterministic checks? → A: Equal weight — `reward = 0.5 × rubric_normalized + 0.5 × deterministic_pass_rate`, each in [0,1]. Equal weight makes grounding a first-class, non-gameable signal alongside breadth/quality.
+- Q: When does a citation count as "resolved" against the repo? → A: `path:line` resolves iff the file exists and `1 ≤ line ≤ line_count`; `path:start-end` iff the range is within bounds; `path:Symbol` iff the file exists and the literal symbol token appears in it; `cmd:`/`output:` citations are excluded from the rate (neither credited nor penalized); any other/malformed form counts as unresolved.
+- Q: What is the deterministic component? → A: The mean pass-rate of the existing 7 deterministic checks, with the citation-bearing checks upgraded to resolve against the real repository (today they validate citation form/presence only). No new check categories are added.
+- Q: Where are the two outputs written? → A: Specialized skill → `<repo>/.reposkillopt/best_skill.md` (existing convention, `canonical_version` mirrored); best spec → `<repo>/.reposkillopt/specs/optimized-repository-specification.md`. The canonical skill in this project is never touched.
+- Q: How large may the evidence pack be? → A: Bounded by a configurable character budget (default ~60,000) chosen to stay within model input limits while far exceeding the old 8 KB digest; omissions are recorded in the pack.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Optimize a skill against real repository evidence (Priority: P1)
