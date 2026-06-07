@@ -109,6 +109,35 @@ def cmd_optimize_repo(args) -> int:
     return 0
 
 
+def cmd_benchmark(args) -> int:
+    from .benchmark import render_report, run_benchmark
+    manifest = Path(args.manifest)
+    if not manifest.is_file():
+        print(f"error: manifest not found: {manifest}", file=sys.stderr)
+        return 2
+    provider = skill_text = None
+    if args.mode == "generate":
+        if not args.skill:
+            print("error: --mode generate requires --skill", file=sys.stderr)
+            return 2
+        from .providers import make_provider
+        provider = make_provider(args.rollout_provider)
+        skill_text = Path(args.skill).read_text()
+    repo_root = Path(__file__).resolve().parents[2]   # reposkillopt repo root
+    print(f"benchmarking grounding ({args.mode} mode) over {manifest} …", file=sys.stderr)
+    report = run_benchmark(manifest.read_text(), mode=args.mode, date=args.date,
+                           provider=provider, skill_text=skill_text, base_dir=str(repo_root))
+    out_dir = Path(args.out) if args.out else (repo_root / "rubric" / "benchmarks")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_file = out_dir / f"{args.date}-grounding.md"
+    out_file.write_text(render_report(report, manifest_path=str(manifest)))
+    a = report.aggregate
+    print(f"scored {a.n} (skipped {a.skipped}): mean {a.mean_rate:.0%}, median {a.median_rate:.0%}, "
+          f"all-checks-pass {a.checks_pass_share:.0%}")
+    print(f"  wrote {out_file}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="reposkillopt-engine")
     p.add_argument("--provider", default="fake", help="fake | anthropic:<model> | openai:<model>")
@@ -140,6 +169,17 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--version", default="0.2.0")
     r.add_argument("--out", help="default: <repo>/.reposkillopt/best_skill.md")
     r.set_defaults(func=cmd_optimize_repo)
+
+    b = sub.add_parser("benchmark",
+                       help="measure citation-grounding of specs across a pinned repo suite")
+    b.add_argument("--manifest", required=True, help="TAB-separated name<TAB>repo<TAB>spec manifest")
+    b.add_argument("--mode", choices=["score", "generate"], default="score")
+    b.add_argument("--out", help="output dir (default: rubric/benchmarks/)")
+    b.add_argument("--date", required=True, help="report date YYYY-MM-DD (kept explicit for reproducibility)")
+    b.add_argument("--skill", help="generate mode: path to the SKILL.md to regenerate specs with")
+    b.add_argument("--rollout-provider", default="claude-cli",
+                   help="generate mode: spec provider (claude-cli | anthropic:<model> | openai:<model>)")
+    b.set_defaults(func=cmd_benchmark)
 
     args = p.parse_args(argv)
     return args.func(args)

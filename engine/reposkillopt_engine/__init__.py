@@ -5,6 +5,8 @@ validation gate (features 003/004) and the convergence loop over a provider-agno
 LLM layer. The Markdown skill remains fully usable without this engine.
 """
 from . import skillopt_backend, skillopt_native
+from .benchmark import (BenchmarkEntry, BenchmarkReport, EntryResult, parse_manifest,
+                        render_report, run_benchmark)
 from .evidence import EvidencePack, build_evidence_pack
 from .gate import GateConfig, GateResult, HeldOutRepo, run_gate
 from .grounding import GroundingResult, ground_spec, parse_citations
@@ -25,5 +27,7 @@ __all__ = [
     "skillopt_backend", "HAS_SKILLOPT",
     "EvidencePack", "build_evidence_pack",
     "GroundingResult", "ground_spec", "parse_citations",
+    "BenchmarkEntry", "EntryResult", "BenchmarkReport",
+    "parse_manifest", "run_benchmark", "render_report",
     "skillopt_native", "RepoTask", "build_repo_digest", "optimize_repo", "__version__",
 ]

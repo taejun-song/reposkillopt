@@ -1,0 +1,8 @@
+# Grounding benchmark seed suite.  Columns: name<TAB>repo<TAB>spec
+# repo: a local path OR url@commit (pinned for reproducibility).
+# spec: repo-root-relative path to the *full* Repository Specification to score.
+#
+# NOTE: only full 19-section reference specs belong here. The held-out "candidate
+# regeneration" stubs (six, escape-string-regexp) are abbreviated and are intentionally
+# excluded — scoring 0/0 citations would vacuously inflate the aggregate.
+click	https://github.com/pallets/click@8.1.7	examples/reference-output/claude-code/.reposkillopt/specs/repository-specification.md
