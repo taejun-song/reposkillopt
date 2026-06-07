@@ -7,25 +7,29 @@ RepoSkillOpt is not a service, not a CLI, not a database, and not a model fine-t
 ## Architecture at a glance
 
 ```text
-        skills/repo-skillopt/SKILL.md  (canonical, v0.2.0)  ◀── source of truth
-                   │ mirrored (adapter-equivalence)
-        ┌──────────┼───────────┬───────────┐
-        ▼          ▼           ▼           ▼
-   claude-code   codex     opencode     generic        templates/  ── instantiated as ──┐
-   (adapters/, each canonical_version: 0.2.0)                                            │
-        │ installed into a target repo by                                                ▼
-        ▼                                              <target>/.reposkillopt/{specs,feedback,
-   installer/  install.sh ─► reposkillopt-install ─►        rollouts,proposals}/  (skill output)
-        │                                                                  ▲
-   quality measured by ▼                                                   │ produced when the
-   rubric/  evaluation-rubric (15 dims) + deterministic-checks (7)         │ skill is RUN
-            validation-gate.md  ─► single-scorer (003) + majority/HELD (004)
-            gates/ (reports)   scripts/ (verdict helpers, shell)
-        │ executed by (optional, opt-in) ▼
-   engine/  optimizer ─► propose ─► gate (regenerate+score+aggregate) ─► accept+bump ─► loop
-            providers: fake | anthropic | openai-compatible (OSS)
-            backend:   native (rubric no-regression)  ──or──  skillopt  ◀── real microsoft/SkillOpt
-                                                                            (apply_edit + evaluate_gate)
+  CANONICAL   skills/repo-skillopt/SKILL.md      — vendor/repo-neutral, source of truth
+      │  mirrored 1:1 (adapter-equivalence)
+      ▼
+  ADAPTERS    claude-code · codex · opencode · generic   (thin wrappers, same content)
+
+
+  ── Layer 1 · run the generic skill on any repo ──────────────────────────────
+      installer/            ─►  drops the right adapter into  <target-repo>
+      agent runs the skill  ─►  <target-repo>/.reposkillopt/{specs,feedback,rollouts,proposals}/
+
+
+  ── Layer 2 · specialize the skill for one repo  (optional engine) ───────────
+      engine/ optimize-repo ─►  reads <target-repo> + the canonical skill
+          reward   = rubric (15 dims + 7 checks)  +  citation-grounding vs real files
+          edits    = microsoft/SkillOpt  (generate → apply → gate)
+          LLM      = API · OSS · local server (air-gapped)
+          writes   = <target-repo>/.reposkillopt/best_skill.md  +  optimized spec
+          (the canonical skill is never modified)
+
+
+  ── Quality bar  (shared by both layers) ─────────────────────────────────────
+      rubric/           evaluation-rubric (15 dimensions, 0–3)  +  deterministic-checks (7)
+      validation-gate   single-scorer (003)  ·  majority / HELD (004)
 ```
 
 Full version — relation map, function reference, schemas — in
