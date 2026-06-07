@@ -347,10 +347,17 @@ def optimize_repo(skill_text: str, version: str, task: RepoTask, *,
         res.history.append(NativeRound(i, source, str(decision.action), accepted))
 
     # Feature 005 outputs: the spec for the final (best) skill_text + its grounding.
+    res.skill_text = _set_version(res.skill_text, res.version)  # front matter matches the bumped version
     res.best_spec = cur_spec
     res.best_reward = cur_reward
     res.citation_rate = cur_ground.rate if cur_ground else 1.0
     return res
+
+
+def _set_version(skill_text: str, version: str) -> str:
+    """Rewrite the front-matter `version:` line to `version` (no-op if absent)."""
+    import re as _re
+    return _re.sub(r"(?m)^version:[ \t]*.*$", f"version: {version}", skill_text, count=1)
 
 
 def _fail_reason(reward: float, ground: GroundingResult | None, *, cap: int = 6) -> str:

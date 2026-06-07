@@ -156,6 +156,14 @@ class TestCombinedReward(unittest.TestCase):
         self.assertEqual(r.best_reward, 0.0)
         self.assertEqual(r.citation_rate, 1.0)
 
+    def test_set_version_rewrites_front_matter(self):
+        skill = "---\nname: repo-skillopt\nversion: 0.2.0\n---\n# body version: keep this\n"
+        out = N._set_version(skill, "0.3.0")
+        self.assertIn("version: 0.3.0", out)
+        self.assertNotIn("version: 0.2.0", out)
+        self.assertIn("# body version: keep this", out)        # only the front-matter line changes
+        self.assertEqual(N._set_version("no front matter", "0.3.0"), "no front matter")  # no-op
+
 
 if __name__ == "__main__":
     unittest.main()
