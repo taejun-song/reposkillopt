@@ -75,5 +75,87 @@ class TestSkillOptNative(unittest.TestCase):
         self.assertEqual(N._snap_patch(skill, raw)["edits"], [])
 
 
+# Combined-reward + grounding plumbing — deterministic, no skillopt and no real model needed.
+import json  # noqa: E402
+import os  # noqa: E402
+import tempfile  # noqa: E402
+
+from reposkillopt_engine.evidence import EvidencePack  # noqa: E402
+from reposkillopt_engine.grounding import REQUIRED_SECTIONS, GroundingResult  # noqa: E402
+from reposkillopt_engine.rubric import CHECKS, DIMENSIONS  # noqa: E402
+
+
+class _StubProvider:
+    """Returns a fixed spec for REGENERATE_SPEC and a fixed scorecard for SCORE_SPEC."""
+    def __init__(self, spec: str, dim_value: int = 3):
+        self.spec = spec
+        self._score = json.dumps({
+            "scores": {d: dim_value for d in DIMENSIONS},
+            "checks": {c: "pass" for c in CHECKS},
+        })
+
+    def complete(self, prompt, system=None):
+        if prompt.startswith("REGENERATE_SPEC"):
+            return self.spec
+        if prompt.startswith("SCORE_SPEC"):
+            return self._score
+        raise AssertionError("unexpected prompt")
+
+
+def _tmp_repo_with_app():
+    d = tempfile.mkdtemp()
+    os.makedirs(os.path.join(d, "pkg"))
+    with open(os.path.join(d, "pkg", "app.py"), "w") as f:
+        f.write("import os\n\n\ndef create_app():\n    return 1\n")  # 5 lines, defines create_app
+    return d
+
+
+def _full_spec(citation: str) -> str:
+    body = "\n".join(f"## {s}\n" for s in REQUIRED_SECTIONS)
+    return body + f"\n**[fact]** the app factory `{citation}`\n"
+
+
+class TestCombinedReward(unittest.TestCase):
+    def test_grounded_spec_scores_perfect_reward(self):
+        repo = _tmp_repo_with_app()
+        task = N.RepoTask("demo", digest="x",
+                          pack=EvidencePack(repo_path=repo, repo_name="demo", text="x"))
+        prov = _StubProvider(_full_spec("pkg/app.py:create_app"), dim_value=3)
+        reward, spec, card, ground = N._score_skill(prov, "# skill", task)
+        self.assertIsInstance(ground, GroundingResult)
+        self.assertEqual(ground.rate, 1.0)
+        self.assertEqual(reward, 1.0)                      # 0.5*1.0 rubric + 0.5*1.0 det
+        self.assertTrue(all(card.checks.values()))         # checks came from real grounding
+
+    def test_fabricated_citation_scores_lower_than_grounded(self):
+        """SC-001/FR-008 at the reward level: same rubric, only citations differ."""
+        repo = _tmp_repo_with_app()
+        task = N.RepoTask("demo", digest="x",
+                          pack=EvidencePack(repo_path=repo, repo_name="demo", text="x"))
+        grounded, *_ = N._score_skill(_StubProvider(_full_spec("pkg/app.py:create_app")), "#", task)
+        fabricated, *_ = N._score_skill(_StubProvider(_full_spec("pkg/app.py:9999")), "#", task)
+        self.assertGreater(grounded, fabricated)
+
+    def test_no_pack_falls_back_to_rubric_only(self):
+        task = N.RepoTask("demo", digest="some digest")     # no pack
+        reward, spec, card, ground = N._score_skill(_StubProvider(_full_spec("pkg/app.py:1")), "#", task)
+        self.assertIsNone(ground)
+        self.assertEqual(reward, 1.0)                        # rubric-only, all dims = 3
+
+    def test_fail_reason_uses_grounding_failures(self):
+        g = GroundingResult(failures=['cited "pkg/app.py:999" — line 999 out of range (file has 5)'])
+        msg = N._fail_reason(0.42, g)
+        self.assertIn("out of range", msg)
+        self.assertIn("0.42", msg)
+        generic = N._fail_reason(0.42, None)
+        self.assertIn("tracing", generic)                    # falls back to the generic guidance
+
+    def test_native_result_carries_outputs(self):
+        r = N.NativeResult(skill_text="s", version="0.2.0")
+        self.assertEqual(r.best_spec, "")
+        self.assertEqual(r.best_reward, 0.0)
+        self.assertEqual(r.citation_rate, 1.0)
+
+
 if __name__ == "__main__":
     unittest.main()

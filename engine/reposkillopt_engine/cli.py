@@ -70,6 +70,7 @@ def cmd_optimize(args) -> int:
 
 
 def cmd_optimize_repo(args) -> int:
+    from .evidence import build_evidence_pack
     from .skillopt_native import HAS_SKILLOPT, RepoTask, build_repo_digest, optimize_repo
     if not HAS_SKILLOPT:
         print("error: the 'skillopt' package is required (pip install skillopt)", file=sys.stderr)
@@ -79,16 +80,29 @@ def cmd_optimize_repo(args) -> int:
         print(f"error: not a directory: {repo}", file=sys.stderr)
         return 2
     skill = Path(args.skill).read_text()
-    task = RepoTask(name=repo.name, digest=build_repo_digest(str(repo)))
+    # Build the evidence pack ONCE per run (FR-002); reused across every candidate and round.
+    print(f"building evidence pack for {repo.name} …", file=sys.stderr)
+    pack = build_evidence_pack(str(repo))
+    print(f"  pack: {len(pack.text)} chars, {len(pack.included_files)} files embedded, "
+          f"{len(pack.omitted)} omitted", file=sys.stderr)
+    task = RepoTask(name=repo.name, digest=build_repo_digest(str(repo)), pack=pack)
     print(f"optimizing skill for {repo.name} — SkillOpt opt-backend={args.opt_backend}, "
           f"rollout={args.rollout_provider}, rounds={args.rounds}", file=sys.stderr)
     res = optimize_repo(skill, args.version, task,
                         opt_backend=args.opt_backend, provider=args.rollout_provider,
                         rounds=args.rounds, timeout=args.timeout)
+    # Output 1: the specialized skill (canonical skill is never touched — FR-011).
     out = Path(args.out) if args.out else (repo / ".reposkillopt" / "best_skill.md")
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(res.skill_text)
-    print(f"final version {res.version}; {res.accepted} accepted of {len(res.history)} rounds; wrote {out}")
+    # Output 2: the best Repository Specification it produced (FR-010).
+    spec_out = repo / ".reposkillopt" / "specs" / "optimized-repository-specification.md"
+    spec_out.parent.mkdir(parents=True, exist_ok=True)
+    spec_out.write_text(res.best_spec)
+    print(f"final version {res.version}; {res.accepted} accepted of {len(res.history)} rounds")
+    print(f"  reward {res.best_reward:.3f}; citation resolution {res.citation_rate:.0%}")
+    print(f"  wrote skill -> {out}")
+    print(f"  wrote spec  -> {spec_out}")
     for rd in res.history:
         print(f"  round {rd.index}: [{rd.source}] {rd.action} "
               f"({'ACCEPT' if rd.accepted else 'reject'})", file=sys.stderr)
