@@ -156,20 +156,26 @@ def _structure_text(repo: Path, *, max_chars: int, pack: "EvidencePack") -> str:
     header = (f"\n\n=== SYMBOLS (deterministic inventory: {len(syms)} defs across "
               f"{len(by_file)} files) — account for EVERY one ===\n")
     sym_budget = max_chars - (len(header) + 400)   # leave room for the schema block
-    lines, used, truncated = [], 0, 0
-    for f, names in sorted(by_file.items()):
+    ordered = sorted(by_file.items())
+    # Pass 1: EVERY file listed compactly (so none is invisible — the agent can account for all).
+    rendered = {f: f"{f}: {len(names)} symbols" for f, names in ordered}
+    used = sum(len(v) + 1 for v in rendered.values())
+    dropped = 0
+    while used > sym_budget and ordered:            # only if even compact overflows (huge repos)
+        f, _ = ordered.pop()
+        used -= len(rendered.pop(f)) + 1
+        dropped += 1
+    # Pass 2: upgrade files to full names where the remaining budget allows.
+    for f, names in ordered:
         full = f"{f}: {', '.join(names)}"
-        compact = f"{f}: {len(names)} symbols"      # fallback when names won't fit
-        pick = full if used + len(full) + 1 <= sym_budget else (
-            compact if used + len(compact) + 1 <= sym_budget else None)
-        if pick is None:
-            truncated += 1
-            continue
-        lines.append(pick)
-        used += len(pick) + 1
-    if truncated:
-        lines.append(f"… ({truncated} more files omitted for budget)")
-        pack.omitted.append(f"symbols for {truncated} files (budget)")
+        delta = len(full) - len(rendered[f])
+        if used + delta <= sym_budget:
+            rendered[f] = full
+            used += delta
+    lines = [rendered[f] for f, _ in ordered]
+    if dropped:
+        lines.append(f"… ({dropped} more files omitted for budget)")
+        pack.omitted.append(f"symbols for {dropped} files (budget)")
     text = header + "\n".join(lines)
 
     if schema:
