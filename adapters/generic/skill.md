@@ -1,7 +1,7 @@
 ---
 name: repo-skillopt
 description: Evidence-grounded legacy-repository understanding with recurrent human feedback and bounded skill convergence. Activates when the user asks to understand, map, document, onboard to, refactor, modify, or assess a repository.
-canonical_version: 0.2.0
+canonical_version: 0.3.0
 adapter: generic
 ---
 
@@ -38,7 +38,7 @@ Execute the following stages in order. Skipping or reordering stages weakens the
 
 (c) **Inspect manifests, configs, tests, deployment files, and entrypoints.** Read at least: build/runtime configs, environment templates, CI workflow definitions, test runner configuration, deployment manifests, and the files identified as entrypoints (CLI scripts, HTTP route registrations, library `__init__` / `index` files).
 
-(d) **Map modules, layers, dependencies, domain concepts, and data flow.** Walk the source tree; assign each module a role; identify the dependency direction between layers; record the names domain experts in this codebase use.
+(d) **Map modules, layers, dependencies, domain concepts, and data flow.** Walk the source tree; assign each module a role; identify the dependency direction between layers; record the names domain experts in this codebase use. **Enumerate every function and class defined in the repository** so none is silently skipped (see the symbol-accounting rule under *Repository Specification Format*).
 
 (e) **Trace specific behavior from entrypoint to core logic to persistence or side effects.** For at least one user-relevant behavior, produce a numbered trace listing every hop (entrypoint → middleware → service → repository → side effect/storage), citing the file and symbol at each hop.
 
@@ -71,6 +71,10 @@ The Repository Specification template lives at `templates/repository-specificati
 19. Evidence index
 
 Empty-by-design sections explicitly state "None known" or "Not applicable" — they are never silently omitted. The *Evidence index* lists every distinct citation appearing in the document, de-duplicated.
+
+**Symbol accounting (no silent omission).** Every function and class defined in the repository MUST be accounted for: either referenced in an analytical claim/citation, or listed under a **"Symbols not yet analyzed"** subsection of *Core modules* (grouped by file; per-file counts are acceptable on large repositories). State the counts — *N defined, M analyzed, N−M listed* — so a reader can see nothing was hidden. Exclude generated/vendored directories.
+
+**Data-model diagram.** When the repository has a database or persistent schema, the *Data model* section MUST include a fenced ` ```mermaid ` block containing an `erDiagram` of the real tables/models — their key columns and foreign-key relationships — with each entity traceable to the schema file that defines it (migration, DDL, or ORM model). When there is no persistent schema, state "Not applicable"; never draw a fabricated schema.
 
 Working artifacts produced by this skill live under a `.reposkillopt/` directory at the **target repository root** (the repository being analyzed, not the project that ships this skill), with fixed subdirectories:
 

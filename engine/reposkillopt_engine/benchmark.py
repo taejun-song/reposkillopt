@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .grounding import ground_spec
-from .quality import QualityMetrics
+from .quality import QualityMetrics, StructureMetrics
 
 
 @dataclass
@@ -40,6 +40,7 @@ class EntryResult:
     checks_pass: bool = False
     failures: list[str] = field(default_factory=list)
     quality: QualityMetrics | None = None       # feature 008 — deterministic quality block
+    structure: StructureMetrics | None = None   # feature 009 — symbol coverage + ER grounding
     rubric_score: float | None = None           # OPTIONAL model-scored aggregate (--rubric only)
     error: str | None = None
 
@@ -134,6 +135,10 @@ def run_entry(entry: BenchmarkEntry, scratch_dir: str, *, mode: str = "score",
         res.checks_pass = all(g.checks.values())
         res.failures = list(g.failures)
         res.quality = compute_quality(spec_text, g, repo_path)   # deterministic, no LLM
+        from .quality import compute_structure
+        from .structure import extract_schema, extract_symbols
+        res.structure = compute_structure(spec_text, extract_symbols(repo_path),
+                                          extract_schema(repo_path))   # deterministic, no LLM
         if with_rubric and provider is not None:                 # OPTIONAL model-scored signal
             from .judge import score_spec
             from .rubric import aggregate
@@ -235,6 +240,19 @@ def render_report(report: BenchmarkReport, *, manifest_path: str) -> str:
             cells = " | ".join("✓" if r.checks.get(c) else "✗" for c in check_names)
             lines.append(f"| {r.name} | {cells} |")
         lines.append("")
+        # Structural coverage (feature 009) — every symbol accounted for + ER grounded.
+        if any(r.structure is not None for r in scored):
+            lines.append("## Structural coverage (model-free)\n")
+            lines.append("| Repo | Symbol coverage | Analyzed | Schema entities | ER grounding |")
+            lines.append("|------|-----------------|----------|-----------------|--------------|")
+            for r in scored:
+                s = r.structure
+                if s is None:
+                    continue
+                erg = "n/a" if s.diagram_grounding is None else f"{s.diagram_grounding:.0%}"
+                lines.append(f"| {r.name} | {s.symbol_coverage:.0%} ({s.symbol_accounted}/{s.symbol_total}) "
+                             f"| {s.analyzed_fraction:.0%} | {s.schema_entities} | {erg} |")
+            lines.append("")
         if any(r.rubric_score is not None for r in scored):
             lines.append("## Model-scored (non-reproducible) — optional context\n")
             lines.append("> These come from the LLM rubric scorer; they are NOT reproducible and "
@@ -251,18 +269,21 @@ def render_report(report: BenchmarkReport, *, manifest_path: str) -> str:
     lines.append("```\n")
     lines.append("Machine-readable (`name\\tpin\\tresolved\\ttotal\\trate\\tchecks_pass"
                  "\\tquality_score\\tcitation_density\\tlabeled_rate\\tmalformed_rate"
-                 "\\tsection_completeness`):\n")
+                 "\\tsection_completeness\\tsymbol_coverage\\tanalyzed_fraction"
+                 "\\tschema_entities\\tdiagram_grounding`):\n")
     lines.append("```tsv")
     for r in report.entries:
         if r.error:
-            lines.append(f"{r.name}\terror\t0\t0\t0.0\tfalse\t0.0\tn/a\t0.0\t0.0\t0.0")
+            lines.append(f"{r.name}\terror\t0\t0\t0.0\tfalse\t0.0\tn/a\t0.0\t0.0\t0.0\t0.0\t0.0\t0\tn/a")
         else:
-            q = r.quality
+            q, s = r.quality, r.structure
             dens = "n/a" if (q is None or q.citation_density is None) else f"{q.citation_density:.4f}"
+            erg = "n/a" if (s is None or s.diagram_grounding is None) else f"{s.diagram_grounding:.4f}"
             lines.append(
                 f"{r.name}\t{r.pin}\t{r.resolved}\t{r.total}\t{r.rate:.4f}\t"
                 f"{'true' if r.checks_pass else 'false'}\t"
                 f"{q.quality_score:.4f}\t{dens}\t{q.labeled_claim_rate:.4f}\t"
-                f"{q.malformed_citation_rate:.4f}\t{q.section_completeness:.4f}")
+                f"{q.malformed_citation_rate:.4f}\t{q.section_completeness:.4f}\t"
+                f"{s.symbol_coverage:.4f}\t{s.analyzed_fraction:.4f}\t{s.schema_entities}\t{erg}")
     lines.append("```")
     return "\n".join(lines) + "\n"

@@ -31,6 +31,13 @@ class TestEvidencePack(unittest.TestCase):
                             for f in pack.included_files))
         self.assertRegex(pack.text, r"\n1: ")   # a numbered first line appears
 
+    def test_includes_symbol_inventory(self):
+        # feature 009: the pack carries a deterministic symbol inventory so the agent
+        # can account for every function/class.
+        pack = build_evidence_pack(self._repo())
+        self.assertIn("=== SYMBOLS (deterministic inventory", pack.text)
+        self.assertIn("main", pack.text)        # the fixture's main.py def main()
+
     def test_bounded_and_omissions_recorded(self):
         repo = self._repo()
         # tiny budget forces file blocks to be dropped and recorded
