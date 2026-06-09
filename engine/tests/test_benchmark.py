@@ -116,15 +116,18 @@ class TestQualitySurfacing(unittest.TestCase):
         e = rep.entries[0]
         self.assertIsNotNone(e.quality)                       # deterministic quality block attached
         self.assertIsNone(e.rubric_score)                     # rubric OFF by default
+        self.assertIsNotNone(e.structure)                     # feature 009 structural block
         out = render_report(rep, manifest_path="m.tsv")
         self.assertIn("Deterministic quality metrics", out)   # quality table
         self.assertIn("Deterministic checks (per-repo)", out) # per-check breakdown
+        self.assertIn("Structural coverage", out)             # feature 009 table
         self.assertNotIn("Model-scored", out)                 # no rubric block by default
         # appended TSV columns present and round-trip
         tsv = out.split("```tsv")[1].split("```")[0].strip().splitlines()
         cols = tsv[0].split("\t")
-        self.assertEqual(len(cols), 11)                       # 6 original + 5 new
+        self.assertEqual(len(cols), 15)                       # 6 grounding + 5 quality + 4 structure
         self.assertEqual(cols[6], f"{e.quality.quality_score:.4f}")
+        self.assertEqual(cols[11], f"{e.structure.symbol_coverage:.4f}")
 
     def test_score_mode_quality_makes_no_model_call(self):
         repo = _repo(); spec = _write_spec(_spec("pkg/app.py:4"))

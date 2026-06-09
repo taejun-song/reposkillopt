@@ -10,7 +10,9 @@ from .benchmark import (BenchmarkEntry, BenchmarkReport, EntryResult, parse_mani
 from .evidence import EvidencePack, build_evidence_pack
 from .gate import GateConfig, GateResult, HeldOutRepo, run_gate
 from .grounding import GroundingResult, ground_spec, parse_citations
-from .quality import QualityMetrics, compute_quality
+from .quality import QualityMetrics, StructureMetrics, compute_quality, compute_structure
+from .structure import (SchemaEntity, Symbol, extract_schema, extract_symbols,
+                        parse_er_entities)
 from .optimizer import OptimizerConfig, OptimizerResult, optimize
 from .proposal import Proposal
 from .providers import FakeProvider, make_provider
@@ -28,7 +30,8 @@ __all__ = [
     "skillopt_backend", "HAS_SKILLOPT",
     "EvidencePack", "build_evidence_pack",
     "GroundingResult", "ground_spec", "parse_citations",
-    "QualityMetrics", "compute_quality",
+    "QualityMetrics", "compute_quality", "StructureMetrics", "compute_structure",
+    "Symbol", "SchemaEntity", "extract_symbols", "extract_schema", "parse_er_entities",
     "BenchmarkEntry", "EntryResult", "BenchmarkReport",
     "parse_manifest", "run_benchmark", "render_report",
     "skillopt_native", "RepoTask", "build_repo_digest", "optimize_repo", "__version__",

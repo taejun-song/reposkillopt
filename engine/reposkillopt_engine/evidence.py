@@ -135,4 +135,34 @@ def build_evidence_pack(repo_path: str, *, char_budget: int = 60_000,
         pack.included_files.append(f)
         used += len(block)
 
+    # Deterministic structural inventory (feature 009) — so the agent can account for every
+    # symbol and draw the ER diagram from real tables. Bounded; omissions recorded.
+    _append_structure(pack, repo, char_budget)
     return pack
+
+
+def _append_structure(pack: "EvidencePack", repo: Path, char_budget: int) -> None:
+    from .structure import extract_schema, extract_symbols
+    syms, schema = extract_symbols(str(repo)), extract_schema(str(repo))
+    by_file: dict[str, list[str]] = {}
+    for s in syms:
+        by_file.setdefault(s.file, []).append(f"{s.name}({s.kind[0]})")
+    sym_lines = [f"{f}: {', '.join(names)}" for f, names in sorted(by_file.items())]
+    sym_block = (f"\n\n=== SYMBOLS (deterministic inventory: {len(syms)} defs) — "
+                 "account for EVERY one ===\n" + "\n".join(sym_lines))
+    if len(pack.text) + len(sym_block) <= char_budget:
+        pack.text += sym_block
+    else:
+        pack.omitted.append(f"symbols-inventory ({len(syms)} defs)")
+
+    if schema:
+        rows = []
+        for e in schema:
+            fk = "; ".join(f"{c or '?'}->{t}" for c, t in e.fks)
+            rows.append(f"{e.name} ({e.source}){'  FK: ' + fk if fk else ''}")
+        sch_block = ("\n\n=== DB SCHEMA (deterministic) — draw the Data-model erDiagram from "
+                     "THESE tables ===\n" + "\n".join(rows))
+        if len(pack.text) + len(sch_block) <= char_budget:
+            pack.text += sch_block
+        else:
+            pack.omitted.append("db-schema")

@@ -91,3 +91,52 @@ def compute_quality(spec_text: str, ground: GroundingResult, repo_path: str) -> 
         fact_count=facts, citation_density=citation_density, labeled_claim_rate=labeled_rate,
         malformed_citation_rate=malformed_rate, section_completeness=section_completeness,
         trace_presence=trace_presence, quality_score=quality_score)
+
+
+@dataclass
+class StructureMetrics:
+    symbol_total: int
+    symbol_accounted: int
+    symbol_coverage: float
+    analyzed_fraction: float
+    schema_entities: int
+    diagram_entities: int
+    diagram_grounding: float | None
+
+
+def compute_structure(spec_text: str, symbols, schema) -> "StructureMetrics":
+    """Deterministic structural coverage: every function/class accounted for + ER grounded.
+
+    `symbols` = list of structure.Symbol; `schema` = list of structure.SchemaEntity.
+    No LLM, reproducible. A symbol is "accounted for" if its name appears anywhere in the spec;
+    "analyzed" if it appears outside the 'Symbols not yet analyzed' subsection.
+    """
+    from .structure import parse_er_entities
+
+    total = len(symbols)
+    # split the spec into "analyzed" body vs the explicit not-yet-analyzed listing
+    not_analyzed = _section_text(spec_text, "Symbols not yet analyzed") or ""
+    analyzed_body = spec_text.replace(not_analyzed, "") if not_analyzed else spec_text
+
+    accounted = analyzed = 0
+    for sym in symbols:
+        tok = re.compile(rf"\b{re.escape(sym.name)}\b")
+        if tok.search(spec_text):
+            accounted += 1
+            if tok.search(analyzed_body):
+                analyzed += 1
+    symbol_coverage = (accounted / total) if total else 1.0
+    analyzed_fraction = (analyzed / total) if total else 1.0
+
+    schema_names = {e.name.lower() for e in schema}
+    er = parse_er_entities(spec_text)
+    if not schema_names or not er:
+        diagram_grounding = None     # n/a: no DB or no diagram
+    else:
+        grounded = sum(1 for e in er if e.lower() in schema_names)
+        diagram_grounding = grounded / len(er)
+
+    return StructureMetrics(
+        symbol_total=total, symbol_accounted=accounted, symbol_coverage=symbol_coverage,
+        analyzed_fraction=analyzed_fraction, schema_entities=len(schema),
+        diagram_entities=len(er), diagram_grounding=diagram_grounding)

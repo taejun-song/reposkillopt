@@ -56,7 +56,20 @@ Authoring rules (do not delete this comment block; remove the *contents* as you 
 
 ## Core modules
 
-<!-- Module name → one-line purpose. Cite the module path. -->
+<!-- Module name → one-line purpose. Cite the module path.
+
+  Symbol accounting (no silent omission): every function and class in the repo must be accounted
+  for — referenced above, or listed under the subsection below. State the counts.
+-->
+
+<!-- If any defined function/class is not discussed above, list them here so nothing is hidden:
+
+### Symbols not yet analyzed
+
+- path/to/file.ext: name1, name2, …   (grouped by file; per-file counts acceptable on large repos)
+
+  Counts: N defined, M analyzed, N−M listed.
+-->
 
 ## Domain model
 
@@ -64,7 +77,19 @@ Authoring rules (do not delete this comment block; remove the *contents* as you 
 
 ## Data model
 
-<!-- Persistent data structures, schemas, table layouts, document shapes. Cite migration files, schema definitions, ORM models, or example documents. -->
+<!-- Persistent data structures, schemas, table layouts, document shapes. Cite migration files, schema definitions, ORM models, or example documents.
+
+  When the repo has a database/persistent schema, include a grounded ER diagram of the REAL tables
+  (key columns + foreign keys), each entity traceable to its schema file. When there is none, write
+  "Not applicable" — never a fabricated schema. Example:
+
+  ```mermaid
+  erDiagram
+    USERS ||--o{ POSTS : authors
+    USERS { int id  text email }
+    POSTS { int id  int author_id }
+  ```
+-->
 
 ## External integrations
 
