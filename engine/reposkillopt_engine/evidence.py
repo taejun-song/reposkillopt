@@ -116,53 +116,67 @@ def build_evidence_pack(repo_path: str, *, char_budget: int = 60_000,
         repo, f"grep -rnE '{_GREP_MARKERS}' --include='*.py' --include='*.ts' "
         "--include='*.js' --include='*.go' . 2>/dev/null | head -40"))
 
+    # Feature 009: the deterministic structural inventory (symbols + schema) is the completeness
+    # backbone, so RESERVE budget for it up front — it must not be crowded out by file contents.
+    struct = _structure_text(repo, max_chars=min(18_000, char_budget // 3), pack=pack)
+
     # Assemble the fixed sections first (budget permitting), then line-numbered key files.
     base = "\n\n".join(parts)
-    if len(base) > char_budget:
-        base = base[:char_budget]
+    if len(base) > char_budget - len(struct):
+        base = base[:max(0, char_budget - len(struct))]
         pack.omitted.append("structural-sections (budget)")
     pack.text = base
+    file_budget = char_budget - len(struct)
 
     code_files = _list_code_files(repo)
     key_files = _select_key_files(repo, code_files, max_files)
     used = len(pack.text)
     for f in key_files:
         block = f"\n\n=== FILE {f} (line-numbered) ===\n{_numbered(repo / f, max_file_lines)}"
-        if used + len(block) > char_budget:
+        if used + len(block) > file_budget:
             pack.omitted.append(f)
             continue
         pack.text += block
         pack.included_files.append(f)
         used += len(block)
 
-    # Deterministic structural inventory (feature 009) — so the agent can account for every
-    # symbol and draw the ER diagram from real tables. Bounded; omissions recorded.
-    _append_structure(pack, repo, char_budget)
+    pack.text += struct   # always included (within the reserved budget)
     return pack
 
 
-def _append_structure(pack: "EvidencePack", repo: Path, char_budget: int) -> None:
+def _structure_text(repo: Path, *, max_chars: int, pack: "EvidencePack") -> str:
+    """Compact, bounded symbol + schema inventory. Lists names while they fit, then per-file
+    counts for the remainder — so a large repo's full file list still reaches the agent."""
     from .structure import extract_schema, extract_symbols
     syms, schema = extract_symbols(str(repo)), extract_schema(str(repo))
+
     by_file: dict[str, list[str]] = {}
     for s in syms:
         by_file.setdefault(s.file, []).append(f"{s.name}({s.kind[0]})")
-    sym_lines = [f"{f}: {', '.join(names)}" for f, names in sorted(by_file.items())]
-    sym_block = (f"\n\n=== SYMBOLS (deterministic inventory: {len(syms)} defs) — "
-                 "account for EVERY one ===\n" + "\n".join(sym_lines))
-    if len(pack.text) + len(sym_block) <= char_budget:
-        pack.text += sym_block
-    else:
-        pack.omitted.append(f"symbols-inventory ({len(syms)} defs)")
+    header = (f"\n\n=== SYMBOLS (deterministic inventory: {len(syms)} defs across "
+              f"{len(by_file)} files) — account for EVERY one ===\n")
+    sym_budget = max_chars - (len(header) + 400)   # leave room for the schema block
+    lines, used, truncated = [], 0, 0
+    for f, names in sorted(by_file.items()):
+        full = f"{f}: {', '.join(names)}"
+        compact = f"{f}: {len(names)} symbols"      # fallback when names won't fit
+        pick = full if used + len(full) + 1 <= sym_budget else (
+            compact if used + len(compact) + 1 <= sym_budget else None)
+        if pick is None:
+            truncated += 1
+            continue
+        lines.append(pick)
+        used += len(pick) + 1
+    if truncated:
+        lines.append(f"… ({truncated} more files omitted for budget)")
+        pack.omitted.append(f"symbols for {truncated} files (budget)")
+    text = header + "\n".join(lines)
 
     if schema:
         rows = []
         for e in schema:
             fk = "; ".join(f"{c or '?'}->{t}" for c, t in e.fks)
             rows.append(f"{e.name} ({e.source}){'  FK: ' + fk if fk else ''}")
-        sch_block = ("\n\n=== DB SCHEMA (deterministic) — draw the Data-model erDiagram from "
-                     "THESE tables ===\n" + "\n".join(rows))
-        if len(pack.text) + len(sch_block) <= char_budget:
-            pack.text += sch_block
-        else:
-            pack.omitted.append("db-schema")
+        text += ("\n\n=== DB SCHEMA (deterministic) — draw the Data-model erDiagram from "
+                 "THESE tables ===\n" + "\n".join(rows))
+    return text[:max_chars]   # hard cap so the caller's budget reservation always holds

@@ -121,10 +121,13 @@ def compute_structure(spec_text: str, symbols, schema) -> "StructureMetrics":
     accounted = analyzed = 0
     for sym in symbols:
         tok = re.compile(rf"\b{re.escape(sym.name)}\b")
-        if tok.search(spec_text):
+        named = bool(tok.search(spec_text))
+        # accounted = the symbol's name appears anywhere, OR its file is listed under
+        # "Symbols not yet analyzed" (per-file accounting is allowed on large repos).
+        if named or (not_analyzed and sym.file in not_analyzed):
             accounted += 1
-            if tok.search(analyzed_body):
-                analyzed += 1
+        if named and tok.search(analyzed_body):
+            analyzed += 1
     symbol_coverage = (accounted / total) if total else 1.0
     analyzed_fraction = (analyzed / total) if total else 1.0
 

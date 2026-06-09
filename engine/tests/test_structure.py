@@ -70,6 +70,15 @@ class TestStructureMetrics(unittest.TestCase):
         self.assertEqual(m.symbol_coverage, 1.0)              # Widget accounted (listed)
         self.assertLess(m.analyzed_fraction, 1.0)            # but not analyzed
 
+    def test_per_file_count_accounting(self):
+        # large-repo style: pkg/app.py symbols are named (analyzed); ui.ts is listed by file
+        # with a count (no names) -> its symbols are accounted (no silent omission) but not analyzed.
+        spec = ("## Core modules\n**[fact]** create_app and AuthService.\n"
+                "\n## Symbols not yet analyzed\n- ui.ts: 3 symbols\n")
+        m = compute_structure(spec, self.syms, self.schema)
+        self.assertEqual(m.symbol_coverage, 1.0)      # all 5 accounted (2 named, 3 file-listed)
+        self.assertLess(m.analyzed_fraction, 1.0)     # ui.ts's 3 not analyzed
+
     def test_diagram_grounding(self):
         grounded = "```mermaid\nerDiagram\n  users {\n int id\n }\n  posts }o--|| users : a\n```\n"
         fabricated = "```mermaid\nerDiagram\n  ghosttable {\n int id\n }\n```\n"
