@@ -116,17 +116,19 @@ def cmd_benchmark(args) -> int:
         print(f"error: manifest not found: {manifest}", file=sys.stderr)
         return 2
     provider = skill_text = None
-    if args.mode == "generate":
-        if not args.skill:
+    if args.mode == "generate" or args.rubric:
+        from .providers import make_provider
+        if args.mode == "generate" and not args.skill:
             print("error: --mode generate requires --skill", file=sys.stderr)
             return 2
-        from .providers import make_provider
         provider = make_provider(args.rollout_provider)
-        skill_text = Path(args.skill).read_text()
+        if args.skill:
+            skill_text = Path(args.skill).read_text()
     repo_root = Path(__file__).resolve().parents[2]   # reposkillopt repo root
     print(f"benchmarking grounding ({args.mode} mode) over {manifest} …", file=sys.stderr)
     report = run_benchmark(manifest.read_text(), mode=args.mode, date=args.date,
-                           provider=provider, skill_text=skill_text, base_dir=str(repo_root))
+                           provider=provider, skill_text=skill_text, base_dir=str(repo_root),
+                           with_rubric=args.rubric)
     out_dir = Path(args.out) if args.out else (repo_root / "rubric" / "benchmarks")
     out_dir.mkdir(parents=True, exist_ok=True)
     out_file = out_dir / f"{args.date}-grounding.md"
@@ -179,6 +181,8 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--skill", help="generate mode: path to the SKILL.md to regenerate specs with")
     b.add_argument("--rollout-provider", default="claude-cli",
                    help="generate mode: spec provider (claude-cli | anthropic:<model> | openai:<model>)")
+    b.add_argument("--rubric", action="store_true",
+                   help="ALSO report the LLM rubric score (non-reproducible, off by default; needs a provider)")
     b.set_defaults(func=cmd_benchmark)
 
     args = p.parse_args(argv)

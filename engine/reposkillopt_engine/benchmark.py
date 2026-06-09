@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .grounding import ground_spec
+from .quality import QualityMetrics
 
 
 @dataclass
@@ -38,6 +39,8 @@ class EntryResult:
     checks: dict[str, bool] = field(default_factory=dict)
     checks_pass: bool = False
     failures: list[str] = field(default_factory=list)
+    quality: QualityMetrics | None = None       # feature 008 — deterministic quality block
+    rubric_score: float | None = None           # OPTIONAL model-scored aggregate (--rubric only)
     error: str | None = None
 
 
@@ -110,8 +113,9 @@ def _resolve(path: str, base_dir: str | None) -> str:
 
 def run_entry(entry: BenchmarkEntry, scratch_dir: str, *, mode: str = "score",
               provider=None, skill_text: str | None = None,
-              base_dir: str | None = None) -> EntryResult:
+              base_dir: str | None = None, with_rubric: bool = False) -> EntryResult:
     """Score one entry. Never raises — failures become `EntryResult.error`."""
+    from .quality import compute_quality
     res = EntryResult(name=entry.name)
     try:
         repo_path, res.pin = ensure_repo(_resolve(entry.repo, base_dir), scratch_dir)
@@ -129,6 +133,13 @@ def run_entry(entry: BenchmarkEntry, scratch_dir: str, *, mode: str = "score",
         res.checks = dict(g.checks)
         res.checks_pass = all(g.checks.values())
         res.failures = list(g.failures)
+        res.quality = compute_quality(spec_text, g, repo_path)   # deterministic, no LLM
+        if with_rubric and provider is not None:                 # OPTIONAL model-scored signal
+            from .judge import score_spec
+            from .rubric import aggregate
+            card = score_spec(provider, spec_text, entry.name)
+            dims, _ = aggregate([card], {d: 0 for d in card.scores})
+            res.rubric_score = sum(d.aggregate for d in dims) / (len(dims) * 3.0)
     except Exception as exc:  # noqa: BLE001 — a bad entry is skipped, never aborts the run
         res.error = str(exc)
     return res
@@ -150,8 +161,8 @@ def aggregate(results: list[EntryResult]) -> Aggregate:
 
 
 def run_benchmark(manifest_text: str, *, mode: str = "score", date: str,
-                  provider=None, skill_text: str | None = None,
-                  scratch_dir: str | None = None, base_dir: str | None = None) -> BenchmarkReport:
+                  provider=None, skill_text: str | None = None, scratch_dir: str | None = None,
+                  base_dir: str | None = None, with_rubric: bool = False) -> BenchmarkReport:
     entries = parse_manifest(manifest_text)
     report = BenchmarkReport(mode=mode, date=date)
     own_scratch = scratch_dir is None
@@ -159,7 +170,8 @@ def run_benchmark(manifest_text: str, *, mode: str = "score", date: str,
     try:
         for e in entries:
             report.entries.append(run_entry(e, scratch, mode=mode, provider=provider,
-                                            skill_text=skill_text, base_dir=base_dir))
+                                            skill_text=skill_text, base_dir=base_dir,
+                                            with_rubric=with_rubric))
     finally:
         if own_scratch:
             import shutil
@@ -197,18 +209,60 @@ def render_report(report: BenchmarkReport, *, manifest_path: str) -> str:
     lines.append(f"**Aggregate** — scored {a.n} (skipped {a.skipped}): "
                  f"mean rate **{a.mean_rate:.0%}**, median **{a.median_rate:.0%}**, "
                  f"all-7-checks-pass share **{a.checks_pass_share:.0%}**.\n")
+
+    # Deterministic quality metrics (feature 008) — visible even when the rate is maxed.
+    scored = [r for r in report.entries if r.error is None and r.quality is not None]
+    if scored:
+        lines.append("## Deterministic quality metrics (model-free)\n")
+        lines.append("| Repo | Quality | Cit/fact | Labeled | Malformed | Sections | Traces |")
+        lines.append("|------|---------|----------|---------|-----------|----------|--------|")
+        for r in scored:
+            q = r.quality
+            dens = "n/a" if q.citation_density is None else f"{q.citation_density:.2f}"
+            lines.append(f"| {r.name} | **{q.quality_score:.0%}** | {dens} | "
+                         f"{q.labeled_claim_rate:.0%} | {q.malformed_citation_rate:.0%} | "
+                         f"{q.section_completeness:.0%} | {q.trace_presence:.0%} |")
+        lines.append("")
+        lines.append("_quality = mean of [labeled-claim rate, 1−malformed rate, section "
+                     "completeness, min(citations/fact, 1), trace presence]; citations/fact "
+                     "dropped when a spec has no `[fact]` claims._\n")
+        # The 7 deterministic checks, individually.
+        check_names = list(scored[0].checks.keys())
+        lines.append("## Deterministic checks (per-repo)\n")
+        lines.append("| Repo | " + " | ".join(check_names) + " |")
+        lines.append("|------|" + "|".join("---" for _ in check_names) + "|")
+        for r in scored:
+            cells = " | ".join("✓" if r.checks.get(c) else "✗" for c in check_names)
+            lines.append(f"| {r.name} | {cells} |")
+        lines.append("")
+        if any(r.rubric_score is not None for r in scored):
+            lines.append("## Model-scored (non-reproducible) — optional context\n")
+            lines.append("> These come from the LLM rubric scorer; they are NOT reproducible and "
+                         "are shown only for context. The deterministic metrics above are the result.\n")
+            for r in scored:
+                if r.rubric_score is not None:
+                    lines.append(f"- {r.name}: rubric {r.rubric_score:.0%}")
+            lines.append("")
+
     lines.append("Reproduce:\n")
     lines.append("```sh")
     lines.append(f"python3 -m reposkillopt_engine benchmark --manifest {manifest_path} "
                  f"--mode {report.mode} --date {report.date}")
     lines.append("```\n")
-    lines.append("Machine-readable (`name\\tpin\\tresolved\\ttotal\\trate\\tchecks_pass`):\n")
+    lines.append("Machine-readable (`name\\tpin\\tresolved\\ttotal\\trate\\tchecks_pass"
+                 "\\tquality_score\\tcitation_density\\tlabeled_rate\\tmalformed_rate"
+                 "\\tsection_completeness`):\n")
     lines.append("```tsv")
     for r in report.entries:
         if r.error:
-            lines.append(f"{r.name}\terror\t0\t0\t0.0\tfalse")
+            lines.append(f"{r.name}\terror\t0\t0\t0.0\tfalse\t0.0\tn/a\t0.0\t0.0\t0.0")
         else:
-            lines.append(f"{r.name}\t{r.pin}\t{r.resolved}\t{r.total}\t{r.rate:.4f}\t"
-                         f"{'true' if r.checks_pass else 'false'}")
+            q = r.quality
+            dens = "n/a" if (q is None or q.citation_density is None) else f"{q.citation_density:.4f}"
+            lines.append(
+                f"{r.name}\t{r.pin}\t{r.resolved}\t{r.total}\t{r.rate:.4f}\t"
+                f"{'true' if r.checks_pass else 'false'}\t"
+                f"{q.quality_score:.4f}\t{dens}\t{q.labeled_claim_rate:.4f}\t"
+                f"{q.malformed_citation_rate:.4f}\t{q.section_completeness:.4f}")
     lines.append("```")
     return "\n".join(lines) + "\n"
