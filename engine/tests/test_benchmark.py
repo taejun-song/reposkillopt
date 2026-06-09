@@ -108,6 +108,33 @@ class TestAggregateAndReport(unittest.TestCase):
         self.assertEqual(rows["bad"][5], "false")
 
 
+class TestQualitySurfacing(unittest.TestCase):
+    def test_entry_carries_quality_and_report_shows_it(self):
+        repo = _repo()
+        spec = _write_spec(_spec("pkg/app.py:create_app"))
+        rep = run_benchmark(f"q\t{repo}\t{spec}\n", mode="score", date="2026-06-09")
+        e = rep.entries[0]
+        self.assertIsNotNone(e.quality)                       # deterministic quality block attached
+        self.assertIsNone(e.rubric_score)                     # rubric OFF by default
+        out = render_report(rep, manifest_path="m.tsv")
+        self.assertIn("Deterministic quality metrics", out)   # quality table
+        self.assertIn("Deterministic checks (per-repo)", out) # per-check breakdown
+        self.assertNotIn("Model-scored", out)                 # no rubric block by default
+        # appended TSV columns present and round-trip
+        tsv = out.split("```tsv")[1].split("```")[0].strip().splitlines()
+        cols = tsv[0].split("\t")
+        self.assertEqual(len(cols), 11)                       # 6 original + 5 new
+        self.assertEqual(cols[6], f"{e.quality.quality_score:.4f}")
+
+    def test_score_mode_quality_makes_no_model_call(self):
+        repo = _repo(); spec = _write_spec(_spec("pkg/app.py:4"))
+        # provider that raises if used — quality + grounding must be model-free
+        rep = run_benchmark(f"q\t{repo}\t{spec}\n", mode="score", date="2026-06-09",
+                            provider=_BoomProvider())
+        self.assertIsNotNone(rep.entries[0].quality)
+        self.assertIsNone(rep.entries[0].rubric_score)
+
+
 class TestGenerateMode(unittest.TestCase):
     def test_generate_mode_with_stub_provider(self):
         repo = _repo()
