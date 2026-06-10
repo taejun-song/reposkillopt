@@ -40,6 +40,46 @@ def generate_spec(provider: LLMProvider, skill_text: str, repo_name: str, repo_c
     return provider.complete(prompt, system="You are a careful repository-understanding agent.")
 
 
+def generate_section(provider: LLMProvider, skill_text: str, repo_name: str,
+                     section_heading: str, section_evidence: str) -> str:
+    """Generate ONE spec section from only that section's retrieved evidence (feature 011)."""
+    prompt = (
+        "REGENERATE_SPEC\n"
+        f"Apply the following skill's discipline and write ONLY the `## {section_heading}` section "
+        "of a Repository Specification (Markdown): the heading line, then its body, with R10 claim "
+        "labels and `file:line` citations grounded strictly in the evidence below. Output that one "
+        "section and nothing else.\n\n"
+        f"<skill>\n{skill_text}\n</skill>\n\n"
+        f"<section>{section_heading}</section>\n"
+        f"<repository name=\"{repo_name}\">\n{section_evidence}\n</repository>\n"
+    )
+    return provider.complete(prompt, system="You are a careful repository-understanding agent.")
+
+
+def generate_spec_section_scoped(provider: LLMProvider, skill_text: str, repo_name: str,
+                                 repo_path: str, *, char_budget: int = 8_000):
+    """Section-scoped generation: each section from only its slice (feature 011, opt-in).
+
+    Returns (spec_text, stats). Peak MODEL-call context is one section's slice, not the whole
+    pack — the completeness step is applied by the caller once, after all sections.
+    """
+    from .retrieval import SECTION_EVIDENCE, retrieve_section_evidence
+    parts = [f"# Repository Specification — {repo_name}"]
+    peak = total = 0
+    fallbacks: list[str] = []
+    for i, section in enumerate(SECTION_EVIDENCE, 1):
+        se = retrieve_section_evidence(repo_path, section, char_budget=char_budget)
+        peak = max(peak, len(se.text))
+        total += len(se.text)
+        if se.fell_back:
+            fallbacks.append(section)
+        body = generate_section(provider, skill_text, repo_name, f"{i}. {section}", se.text)
+        parts.append(body.strip())
+    stats = {"peak_chars": peak, "total_chars": total, "fallbacks": fallbacks,
+             "sections": len(SECTION_EVIDENCE)}
+    return "\n\n".join(parts) + "\n", stats
+
+
 def score_spec(provider: LLMProvider, spec_text: str, repo_name: str) -> ScoreCard:
     dims = ", ".join(DIMENSIONS)
     checks = ", ".join(CHECKS)

@@ -115,19 +115,30 @@ def _resolve(path: str, base_dir: str | None) -> str:
 def run_entry(entry: BenchmarkEntry, scratch_dir: str, *, mode: str = "score",
               provider=None, skill_text: str | None = None,
               base_dir: str | None = None, with_rubric: bool = False,
-              pack_opts: dict | None = None) -> EntryResult:
+              pack_opts: dict | None = None, section_scoped: bool = False) -> EntryResult:
     """Score one entry. Never raises — failures become `EntryResult.error`."""
     from .quality import compute_quality
     res = EntryResult(name=entry.name)
     try:
         repo_path, res.pin = ensure_repo(_resolve(entry.repo, base_dir), scratch_dir)
         if mode == "generate":
-            from .evidence import build_evidence_pack
-            from .judge import generate_spec
             if provider is None or skill_text is None:
                 raise ValueError("generate mode requires provider + skill_text")
-            pack = build_evidence_pack(repo_path, **(pack_opts or {}))
-            spec_text = generate_spec(provider, skill_text, entry.name, pack.text)
+            if section_scoped:   # feature 011: per-section retrieval, lower peak context
+                import sys
+
+                from .judge import generate_spec_section_scoped
+                budget = (pack_opts or {}).get("char_budget", 8_000)
+                spec_text, stats = generate_spec_section_scoped(
+                    provider, skill_text, entry.name, repo_path, char_budget=budget)
+                print(f"  [section-scoped] peak {stats['peak_chars']} chars/section, total "
+                      f"{stats['total_chars']} across {stats['sections']} sections, "
+                      f"{len(stats['fallbacks'])} inventory fallbacks", file=sys.stderr)
+            else:
+                from .evidence import build_evidence_pack
+                from .judge import generate_spec
+                pack = build_evidence_pack(repo_path, **(pack_opts or {}))
+                spec_text = generate_spec(provider, skill_text, entry.name, pack.text)
             from .completeness import ensure_symbol_completeness   # guarantee 100% accounting
             spec_text = ensure_symbol_completeness(spec_text, repo_path)
         else:
@@ -171,7 +182,7 @@ def aggregate(results: list[EntryResult]) -> Aggregate:
 def run_benchmark(manifest_text: str, *, mode: str = "score", date: str,
                   provider=None, skill_text: str | None = None, scratch_dir: str | None = None,
                   base_dir: str | None = None, with_rubric: bool = False,
-                  pack_opts: dict | None = None) -> BenchmarkReport:
+                  pack_opts: dict | None = None, section_scoped: bool = False) -> BenchmarkReport:
     entries = parse_manifest(manifest_text)
     report = BenchmarkReport(mode=mode, date=date)
     own_scratch = scratch_dir is None
@@ -180,7 +191,8 @@ def run_benchmark(manifest_text: str, *, mode: str = "score", date: str,
         for e in entries:
             report.entries.append(run_entry(e, scratch, mode=mode, provider=provider,
                                             skill_text=skill_text, base_dir=base_dir,
-                                            with_rubric=with_rubric, pack_opts=pack_opts))
+                                            with_rubric=with_rubric, pack_opts=pack_opts,
+                                            section_scoped=section_scoped))
     finally:
         if own_scratch:
             import shutil

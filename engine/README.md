@@ -174,6 +174,32 @@ while keeping the deterministic symbol inventory. Scoring stays model-free (zero
 completeness step still appends the full symbol listing *after* generation (the model never
 transcribes it). Combine with `render --view agent` to keep the *consumed* spec lean too.
 
+## Section-scoped retrieval — lower *peak* context (opt-in)
+
+`--low-context` shrinks the one pack; **section-scoped** mode goes further by feeding each spec
+section only the evidence *that section* needs, retrieved deterministically from the structural
+ontology the project already computes (symbols, schema/FKs, manifests, entrypoints) — **no
+embeddings, no vector DB**.
+
+```sh
+# generate the spec section-by-section; each model call sees only its slice
+reposkillopt-engine benchmark --manifest <m.tsv> --mode generate \
+    --skill skills/repo-skillopt/SKILL.md --rollout-provider claude-cli --section-scoped --date demo
+```
+
+```python
+# inspect a slice / the peak-vs-total tradeoff, model-free
+from reposkillopt_engine.retrieval import retrieve_section_evidence, build_retrieval_report
+build_retrieval_report("/path/to/repo", char_budget=8000)   # baseline / peak / total / fallbacks
+```
+
+Measured on `eco-standard-wiki`: peak per-section evidence **7.9 KB (~2.0k tokens)** vs the full
+pack **55.6 KB (~13.9k tokens)** — an **86% peak reduction**, deterministic and byte-identical on
+re-run. **Honest tradeoff:** total evidence across the 19 sections (~85.7 KB) *exceeds* the single
+pack — section-scoped lowers the **peak** context to fit a tight window but can raise **total**
+tokens. It is opt-in; the single-pack path stays the default. Spec guarantees are unchanged (the
+completeness step still runs once at the end → 100% symbol coverage).
+
 ## Audience-specific views (`render`) — one source of truth, derived projections
 
 The Repository Specification is **one** evidence-grounded Markdown document. Rather than
