@@ -33,6 +33,19 @@ def _provider(args, cfg: dict):
     return make_provider(args.provider, **kwargs)
 
 
+# Low-context preset: shrink the evidence pack (keep the high-signal structure inventory,
+# trim file excerpts) so the per-generation context fits a small window. ~60k -> ~24k chars.
+_LOW_CTX = {"char_budget": 24_000, "max_files": 12, "max_file_lines": 200}
+
+
+def _pack_opts(args) -> dict:
+    """Resolve evidence-pack sizing from --low-context / --pack-budget (empty dict = defaults)."""
+    opts = dict(_LOW_CTX) if getattr(args, "low_context", False) else {}
+    if getattr(args, "pack_budget", None):
+        opts["char_budget"] = args.pack_budget      # explicit budget overrides the preset
+    return opts
+
+
 def cmd_gate(args) -> int:
     cfg = json.loads(Path(args.config).read_text())
     skill = Path(cfg["skill_path"]).read_text() if "skill_path" in cfg else cfg.get("skill_text", "")
@@ -81,16 +94,22 @@ def cmd_optimize_repo(args) -> int:
         return 2
     skill = Path(args.skill).read_text()
     # Build the evidence pack ONCE per run (FR-002); reused across every candidate and round.
-    print(f"building evidence pack for {repo.name} …", file=sys.stderr)
-    pack = build_evidence_pack(str(repo))
+    pack_opts = _pack_opts(args)
+    rounds = args.rounds if args.rounds is not None else (1 if args.low_context else 2)
+    if pack_opts:
+        print(f"building evidence pack for {repo.name} (low-context: "
+              f"budget={pack_opts.get('char_budget')} chars) …", file=sys.stderr)
+    else:
+        print(f"building evidence pack for {repo.name} …", file=sys.stderr)
+    pack = build_evidence_pack(str(repo), **pack_opts)
     print(f"  pack: {len(pack.text)} chars, {len(pack.included_files)} files embedded, "
           f"{len(pack.omitted)} omitted", file=sys.stderr)
     task = RepoTask(name=repo.name, digest=build_repo_digest(str(repo)), pack=pack)
     print(f"optimizing skill for {repo.name} — SkillOpt opt-backend={args.opt_backend}, "
-          f"rollout={args.rollout_provider}, rounds={args.rounds}", file=sys.stderr)
+          f"rollout={args.rollout_provider}, rounds={rounds}", file=sys.stderr)
     res = optimize_repo(skill, args.version, task,
                         opt_backend=args.opt_backend, provider=args.rollout_provider,
-                        rounds=args.rounds, timeout=args.timeout)
+                        rounds=rounds, timeout=args.timeout)
     # Output 1: the specialized skill (canonical skill is never touched — FR-011).
     out = Path(args.out) if args.out else (repo / ".reposkillopt" / "best_skill.md")
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -129,7 +148,7 @@ def cmd_benchmark(args) -> int:
     print(f"benchmarking grounding ({args.mode} mode) over {manifest} …", file=sys.stderr)
     report = run_benchmark(manifest.read_text(), mode=args.mode, date=args.date,
                            provider=provider, skill_text=skill_text, base_dir=str(repo_root),
-                           with_rubric=args.rubric)
+                           with_rubric=args.rubric, pack_opts=_pack_opts(args))
     out_dir = Path(args.out) if args.out else (repo_root / "rubric" / "benchmarks")
     out_dir.mkdir(parents=True, exist_ok=True)
     out_file = out_dir / f"{args.date}-grounding.md"
@@ -201,7 +220,12 @@ def main(argv: list[str] | None = None) -> int:
                    help="SkillOpt edit-generator backend: claude-code (keyless) | openai | qwen | minimax")
     r.add_argument("--rollout-provider", default="claude-cli",
                    help="spec generate/score provider: claude-cli | anthropic:<model> | openai:<model>")
-    r.add_argument("--rounds", type=int, default=2)
+    r.add_argument("--rounds", type=int, default=None,
+                   help="optimize rounds (default 2; --low-context defaults this to 1)")
+    r.add_argument("--pack-budget", type=int, default=None,
+                   help="evidence-pack character budget (default 60000; lower = less context per generation)")
+    r.add_argument("--low-context", action="store_true",
+                   help="shrink the evidence pack (~24k chars) and default rounds to 1, for small context windows")
     r.add_argument("--timeout", type=float, default=600.0,
                    help="per model-call timeout in seconds (spec generation is slow on big repos)")
     r.add_argument("--version", default="0.2.0")
@@ -221,6 +245,10 @@ def main(argv: list[str] | None = None) -> int:
                    help="ALSO report the LLM rubric score (non-reproducible, off by default; needs a provider)")
     b.add_argument("--timeout", type=float, default=900.0,
                    help="generate-mode: per model-call timeout in seconds (default 900; big repos are slow)")
+    b.add_argument("--pack-budget", type=int, default=None,
+                   help="generate-mode: evidence-pack character budget (default 60000)")
+    b.add_argument("--low-context", action="store_true",
+                   help="generate-mode: shrink the evidence pack (~24k chars) for small context windows")
     b.set_defaults(func=cmd_benchmark)
 
     c = sub.add_parser("complete-spec",
