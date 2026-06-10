@@ -1,7 +1,7 @@
 ---
 name: repo-skillopt
 description: Evidence-grounded legacy-repository understanding with recurrent human feedback and bounded skill convergence. Activates when the user asks to understand, map, document, onboard to, refactor, modify, or assess a repository.
-canonical_version: 0.4.0
+canonical_version: 0.5.0
 adapter: generic
 ---
 
@@ -77,6 +77,13 @@ Empty-by-design sections explicitly state "None known" or "Not applicable" — t
 **Symbol accounting (no silent omission).** Every function and class defined in the repository MUST be accounted for: either referenced in an analytical claim/citation, or listed under a **"Symbols not yet analyzed"** subsection of *Core modules* (grouped by file; per-file counts are acceptable on large repositories). State the counts — *N defined, M analyzed, N−M listed* — so a reader can see nothing was hidden. Exclude generated/vendored directories.
 
 **Data-model diagram.** When the repository has a database or persistent schema, the *Data model* section MUST include a fenced ` ```mermaid ` block containing an `erDiagram` of the real tables/models — their key columns and foreign-key relationships — with each entity traceable to the schema file that defines it (migration, DDL, or ORM model). When there is no persistent schema, state "Not applicable"; never draw a fabricated schema.
+
+**Presentation format.** A specification is read by humans, so favour scannable structure:
+
+- Use **numbered section headings** in template order — `## 1. Repository overview` … `## 19. Evidence index`.
+- Render inherently tabular sections as Markdown **tables** with an **Evidence** column (the `path:line` citation) and a **Label** column (`[fact]`/`[inference]`/`[unknown]`): *Technology stack*, *Dependency map*, *Configuration map*, the field list of *Data model*, and *Evidence index*.
+- For *Control-flow traces* and *Data-flow traces*, lead with a fenced ` ```mermaid ` **`flowchart`** depicting the steps end to end, then list the authoritative numbered steps as labeled, cited claims beneath it.
+- Diagrams (`flowchart`, `erDiagram`) are visual aids and carry **no citations**; every step or entity a diagram shows MUST also appear as a labeled, cited line or table row, so evidence grounding is unaffected by the diagram.
 
 Working artifacts produced by this skill live under a `.reposkillopt/` directory at the **target repository root** (the repository being analyzed, not the project that ships this skill), with fixed subdirectories:
 

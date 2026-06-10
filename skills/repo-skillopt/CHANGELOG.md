@@ -2,6 +2,16 @@
 
 All notable changes to `skills/repo-skillopt/SKILL.md` are recorded here in [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format. Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Each entry's `version:` field matches the `version:` in `SKILL.md`. Adapters' `canonical_version:` fields MUST point at a version listed below.
 
+## [0.5.0] — 2026-06-11
+
+### Added
+
+- **Presentation format (human-readable specs)** — specifications now favour scannable structure: **numbered section headings** (`## 1. Repository overview` … `## 19. Evidence index`); **Markdown tables** with `Evidence` + `Label` columns for the inherently tabular sections (*Technology stack*, *Dependency map*, *Configuration map*, *Data model* fields, *Evidence index*); and **Mermaid `flowchart` diagrams** for *Control-flow traces* and *Data-flow traces* (joining the existing `erDiagram` for *Data model*). Diagrams are visual aids carrying **no citations** — every step/entity they show also appears as a labeled, cited line or table row, so citation-grounding, quality, and coverage metrics are unaffected. Template updated to match; mirrored into all four adapters (`canonical_version: 0.5.0`).
+
+### Fixed
+
+- **`section_completeness` read 0% on fully-sectioned specs** — the quality metric's heading detector required a strict `startswith`, so readable numbered headings (`## 1. Repository overview`) failed to match their canonical names and a complete spec scored 0% sections. The detector now strips a leading enumerator/emphasis before matching (consistent with the grounding check, which already tolerated them). Engine-side; no skill behavior change.
+
 ## [0.4.0] — 2026-06-10
 
 ### Added

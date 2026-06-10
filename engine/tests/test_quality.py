@@ -58,6 +58,18 @@ class TestQuality(unittest.TestCase):
             (a.quality_score, a.malformed_citation_rate, a.section_completeness, a.citation_density),
             (b.quality_score, b.malformed_citation_rate, b.section_completeness, b.citation_density))
 
+    def test_numbered_headings_count_as_complete(self):
+        """Readable numbered/decorated headings must still match the canonical section names.
+
+        Regression: `## 1. Repository overview` previously failed the strict startswith and a
+        fully-sectioned spec read section_completeness=0% (the live generate-mode anomaly)."""
+        numbered = "\n".join(
+            f"## {i}. {s}\nContent for {s}.\n" for i, s in enumerate(REQUIRED_SECTIONS, 1))
+        self.assertEqual(self._q(numbered).section_completeness, 1.0)
+        # a decorated heading variant ("## **Repository overview**") also matches
+        decorated = numbered.replace("## 1. Repository overview", "## **Repository overview**")
+        self.assertEqual(self._q(decorated).section_completeness, 1.0)
+
 
 if __name__ == "__main__":
     unittest.main()
