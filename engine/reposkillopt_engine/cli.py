@@ -121,7 +121,8 @@ def cmd_benchmark(args) -> int:
         if args.mode == "generate" and not args.skill:
             print("error: --mode generate requires --skill", file=sys.stderr)
             return 2
-        provider = make_provider(args.rollout_provider)
+        kw = {} if args.rollout_provider.startswith("fake") else {"timeout": args.timeout}
+        provider = make_provider(args.rollout_provider, **kw)
         if args.skill:
             skill_text = Path(args.skill).read_text()
     repo_root = Path(__file__).resolve().parents[2]   # reposkillopt repo root
@@ -203,6 +204,8 @@ def main(argv: list[str] | None = None) -> int:
                    help="generate mode: spec provider (claude-cli | anthropic:<model> | openai:<model>)")
     b.add_argument("--rubric", action="store_true",
                    help="ALSO report the LLM rubric score (non-reproducible, off by default; needs a provider)")
+    b.add_argument("--timeout", type=float, default=900.0,
+                   help="generate-mode: per model-call timeout in seconds (default 900; big repos are slow)")
     b.set_defaults(func=cmd_benchmark)
 
     c = sub.add_parser("complete-spec",
