@@ -153,6 +153,27 @@ canonical skill): `<repo>/.reposkillopt/best_skill.md` and
 > selection, the SkillOpt apply/gate chain, rollout shaping, the evidence pack, and citation
 > grounding) are unit-tested, and the live loop is validated by running it.
 
+## Low-context mode — shrink the per-generation evidence pack
+
+Each spec generation sends the cached **evidence pack** to the model. On a big repo that pack is
+the dominant context cost (e.g. `eco-standard-wiki`: ~55.6 KB ≈ 14k tokens). For a small context
+window, shrink it — the high-signal **structure inventory** (symbols + schema) is kept; the
+expendable **file excerpts** are trimmed:
+
+```sh
+# preset: ~24k-char pack (≈ 6k tokens) AND default rounds to 1
+reposkillopt-engine optimize-repo <repo> --skill … --low-context
+
+# or set an explicit budget
+reposkillopt-engine optimize-repo <repo> --skill … --pack-budget 30000
+reposkillopt-engine benchmark   --manifest … --mode generate --skill … --low-context
+```
+
+Measured on `eco-standard-wiki`: `--low-context` cuts the pack **55.6 KB → 21.1 KB (62% smaller)**
+while keeping the deterministic symbol inventory. Scoring stays model-free (zero tokens), and the
+completeness step still appends the full symbol listing *after* generation (the model never
+transcribes it). Combine with `render --view agent` to keep the *consumed* spec lean too.
+
 ## Audience-specific views (`render`) — one source of truth, derived projections
 
 The Repository Specification is **one** evidence-grounded Markdown document. Rather than
