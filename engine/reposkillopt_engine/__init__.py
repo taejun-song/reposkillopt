@@ -10,6 +10,7 @@ from .benchmark import (BenchmarkEntry, BenchmarkReport, EntryResult, parse_mani
 from .evidence import EvidencePack, build_evidence_pack
 from .gate import GateConfig, GateResult, HeldOutRepo, run_gate
 from .grounding import GroundingResult, ground_spec, parse_citations
+from .completeness import ensure_symbol_completeness
 from .quality import QualityMetrics, StructureMetrics, compute_quality, compute_structure
 from .structure import (SchemaEntity, Symbol, extract_schema, extract_symbols,
                         parse_er_entities)
@@ -32,6 +33,7 @@ __all__ = [
     "GroundingResult", "ground_spec", "parse_citations",
     "QualityMetrics", "compute_quality", "StructureMetrics", "compute_structure",
     "Symbol", "SchemaEntity", "extract_symbols", "extract_schema", "parse_er_entities",
+    "ensure_symbol_completeness",
     "BenchmarkEntry", "EntryResult", "BenchmarkReport",
     "parse_manifest", "run_benchmark", "render_report",
     "skillopt_native", "RepoTask", "build_repo_digest", "optimize_repo", "__version__",
