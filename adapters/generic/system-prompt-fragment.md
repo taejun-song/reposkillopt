@@ -1,5 +1,5 @@
 <!-- repo-skillopt-meta
-canonical_version: 0.5.0
+canonical_version: 0.6.0
 adapter: generic
 -->
 

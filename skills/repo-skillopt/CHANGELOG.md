@@ -2,6 +2,12 @@
 
 All notable changes to `skills/repo-skillopt/SKILL.md` are recorded here in [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format. Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Each entry's `version:` field matches the `version:` in `SKILL.md`. Adapters' `canonical_version:` fields MUST point at a version listed below.
 
+## [0.6.0] — 2026-06-11
+
+### Added
+
+- **Incremental, disk-not-context spec authoring (workflow stage f)** — the agent now writes each section to the spec file *as it is completed* and **does not retain already-written sections in working context**: it keeps only the current section plus the evidence it needs, and reads earlier sections back from the file when required (e.g. de-duplicating the *Evidence index*). This bounds working context by the *current* section instead of the whole growing spec, so the workflow scales to large repositories within a **small context window**. The authoritative specification is always the file on disk. Complements the engine-side `--low-context` evidence-pack shrink and the `render --view agent` lean projection. Mirrored into all four adapters (`canonical_version: 0.6.0`).
+
 ## [0.5.0] — 2026-06-11
 
 ### Added

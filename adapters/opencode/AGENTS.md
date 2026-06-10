@@ -1,5 +1,5 @@
 <!-- repo-skillopt-meta
-canonical_version: 0.5.0
+canonical_version: 0.6.0
 adapter: opencode
 -->
 
@@ -40,7 +40,7 @@ Execute the following stages in order. Skipping or reordering stages weakens the
 
 (e) **Trace specific behavior from entrypoint to core logic to persistence or side effects.** For at least one user-relevant behavior, produce a numbered trace listing every hop (entrypoint → middleware → service → repository → side effect/storage), citing the file and symbol at each hop.
 
-(f) **Produce a Repository Specification.** Use the Repository Specification template at `templates/repository-specification.md` and fill all 19 required sections. Apply the label-and-citation discipline from *Output Discipline*.
+(f) **Produce a Repository Specification — incrementally, on disk.** Use the Repository Specification template at `templates/repository-specification.md` and fill all 19 required sections, applying the label-and-citation discipline from *Output Discipline*. **Write each section to the spec file as you complete it, and do not retain already-written sections in working context** — once a section is persisted, drop it from your working set and keep only the section you are currently writing plus the evidence it needs. When a later section must consult an earlier one (e.g. de-duplicating the *Evidence index*), read it back from the file rather than holding the whole document in context. This keeps working context bounded by the *current* section instead of the whole growing spec, so the workflow scales to large repositories within a small context window. The authoritative specification is always the file on disk, never an in-context copy.
 
 (g) **Identify risks, unknowns, and safe next steps.** Populate *Known risks* with repository-specific (not generic) risks, each tied to evidence. Populate *Unknowns and unresolved questions* with every gap surfaced during stages (a)–(f). Suggest concrete next steps a human can take to resolve key unknowns.
 
