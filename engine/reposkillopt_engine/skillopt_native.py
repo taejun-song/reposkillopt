@@ -185,11 +185,29 @@ def _score_skill(provider: LLMProvider, skill_text: str,
     dims, _ = aggregate([card], task.baseline or {d: 0 for d in card.scores})
     rubric_norm = sum(d.aggregate for d in dims) / (len(dims) * 3.0)
     if ground is not None:
-        det_rate = sum(1 for ok in ground.checks.values() if ok) / len(ground.checks)
-        reward = 0.5 * rubric_norm + 0.5 * det_rate
+        reward = 0.5 * rubric_norm + 0.5 * _deterministic_score(spec, ground, task.repo_path)
     else:
         reward = rubric_norm
     return reward, spec, card, ground
+
+
+def _deterministic_score(spec: str, ground: GroundingResult, repo_path: str) -> float:
+    """The model-free half of the reward — all deterministic, so it cannot be gamed by prose.
+
+    Grounding-dominant, plus the feature-008 quality and feature-009 structural signals:
+        0.4·citation-grounding(checks) + 0.3·quality + 0.2·analyzed-coverage + 0.1·ER-grounding
+    (the ER term is dropped and the rest renormalized when the repo has no schema/diagram).
+    """
+    from .quality import compute_quality, compute_structure
+    from .structure import extract_schema, extract_symbols
+    det_rate = sum(1 for ok in ground.checks.values() if ok) / len(ground.checks)
+    q = compute_quality(spec, ground, repo_path)
+    s = compute_structure(spec, extract_symbols(repo_path), extract_schema(repo_path))
+    parts = [(0.4, det_rate), (0.3, q.quality_score), (0.2, s.analyzed_fraction)]
+    if s.diagram_grounding is not None:
+        parts.append((0.1, s.diagram_grounding))
+    wsum = sum(w for w, _ in parts)
+    return sum(w * v for w, v in parts) / wsum
 
 
 def _rollout_results(reward: float, spec: str, task: RepoTask) -> list[dict]:

@@ -114,10 +114,13 @@ RepoSkillOpt supplies the **reward**, grounded in the real repository (feature 0
 1. a **cached evidence pack** (`evidence.build_evidence_pack`) is built once per run — repo
    structure, manifests, entrypoints, and **line-numbered** key-file contents — and reused for
    every candidate (no per-candidate re-exploration);
-2. each candidate skill generates a spec from that pack, which is scored as
-   `reward = 0.5 × rubric + 0.5 × deterministic-pass-rate`, where the deterministic part
-   (`grounding.ground_spec`) **resolves every `file:line` / `file:Symbol` citation against the
-   actual files** — so a spec cannot win by fabricating citations;
+2. each candidate skill generates a spec from that pack, scored as
+   `reward = 0.5 × rubric + 0.5 × deterministic`, where the **deterministic** half is model-free
+   and folds together citation-grounding, quality, and structural coverage —
+   `0.4·grounding-checks + 0.3·quality-score + 0.2·analyzed-coverage + 0.1·ER-grounding`
+   (ER term dropped + renormalized when the repo has no schema). Because every term but the
+   rubric is computed against the real repo, **a spec cannot win by fabricating citations or
+   skimping on coverage** — half the reward is non-gameable;
 3. the concrete grounding failures (unresolved citations, missing sections, uncited claims) are
    fed into SkillOpt's reflect, so edits target the repo's real gaps.
 

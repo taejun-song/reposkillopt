@@ -116,7 +116,7 @@ def _full_spec(citation: str) -> str:
 
 
 class TestCombinedReward(unittest.TestCase):
-    def test_grounded_spec_scores_perfect_reward(self):
+    def test_grounded_spec_high_reward(self):
         repo = _tmp_repo_with_app()
         task = N.RepoTask("demo", digest="x",
                           pack=EvidencePack(repo_path=repo, repo_name="demo", text="x"))
@@ -124,8 +124,19 @@ class TestCombinedReward(unittest.TestCase):
         reward, spec, card, ground = N._score_skill(prov, "# skill", task)
         self.assertIsInstance(ground, GroundingResult)
         self.assertEqual(ground.rate, 1.0)
-        self.assertEqual(reward, 1.0)                      # 0.5*1.0 rubric + 0.5*1.0 det
+        # reward = 0.5*rubric(1.0) + 0.5*deterministic(grounding+quality+coverage); high, ≤ 1.0
+        self.assertGreater(reward, 0.7)
+        self.assertLessEqual(reward, 1.0)
         self.assertTrue(all(card.checks.values()))         # checks came from real grounding
+
+    def test_deterministic_score_rewards_quality_and_coverage(self):
+        # the model-free half folds in quality (008) + analyzed-coverage (009), not just grounding
+        repo = _tmp_repo_with_app()
+        g = __import__("reposkillopt_engine.grounding", fromlist=["ground_spec"]).ground_spec(
+            repo, _full_spec("pkg/app.py:create_app"))
+        det = N._deterministic_score(_full_spec("pkg/app.py:create_app"), g, repo)
+        self.assertGreaterEqual(det, 0.0)
+        self.assertLessEqual(det, 1.0)
 
     def test_fabricated_citation_scores_lower_than_grounded(self):
         """SC-001/FR-008 at the reward level: same rubric, only citations differ."""
