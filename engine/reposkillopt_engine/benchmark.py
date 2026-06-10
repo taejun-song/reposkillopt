@@ -127,6 +127,8 @@ def run_entry(entry: BenchmarkEntry, scratch_dir: str, *, mode: str = "score",
                 raise ValueError("generate mode requires provider + skill_text")
             pack = build_evidence_pack(repo_path)
             spec_text = generate_spec(provider, skill_text, entry.name, pack.text)
+            from .completeness import ensure_symbol_completeness   # guarantee 100% accounting
+            spec_text = ensure_symbol_completeness(spec_text, repo_path)
         else:
             spec_text = Path(_resolve(entry.spec, base_dir)).read_text()
         g = ground_spec(repo_path, spec_text)

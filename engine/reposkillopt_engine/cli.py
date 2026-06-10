@@ -140,6 +140,26 @@ def cmd_benchmark(args) -> int:
     return 0
 
 
+def cmd_complete_spec(args) -> int:
+    from .completeness import ensure_symbol_completeness
+    from .quality import compute_structure
+    from .structure import extract_schema, extract_symbols
+    repo, spec = Path(args.repo), Path(args.spec)
+    if not repo.is_dir():
+        print(f"error: not a directory: {repo}", file=sys.stderr); return 2
+    if not spec.is_file():
+        print(f"error: spec not found: {spec}", file=sys.stderr); return 2
+    done = ensure_symbol_completeness(spec.read_text(), str(repo))
+    m = compute_structure(done, extract_symbols(str(repo)), extract_schema(str(repo)))
+    if args.out:
+        Path(args.out).write_text(done)
+        print(f"wrote {args.out} — symbol coverage {m.symbol_coverage:.0%} "
+              f"({m.symbol_accounted}/{m.symbol_total}); analyzed {m.analyzed_fraction:.0%}")
+    else:
+        sys.stdout.write(done)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="reposkillopt-engine")
     p.add_argument("--provider", default="fake", help="fake | anthropic:<model> | openai:<model>")
@@ -184,6 +204,13 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--rubric", action="store_true",
                    help="ALSO report the LLM rubric score (non-reproducible, off by default; needs a provider)")
     b.set_defaults(func=cmd_benchmark)
+
+    c = sub.add_parser("complete-spec",
+                       help="deterministically guarantee every function/class is accounted for in a spec")
+    c.add_argument("--repo", required=True, help="path to the analyzed repository")
+    c.add_argument("--spec", required=True, help="path to the Repository Specification to complete")
+    c.add_argument("--out", help="write here (default: stdout)")
+    c.set_defaults(func=cmd_complete_spec)
 
     args = p.parse_args(argv)
     return args.func(args)

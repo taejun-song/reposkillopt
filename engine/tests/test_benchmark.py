@@ -152,6 +152,23 @@ class TestGenerateMode(unittest.TestCase):
         self.assertEqual(r.rate, 1.0)
         self.assertTrue(r.checks_pass)
 
+    def test_generate_mode_completeness_guarantee(self):
+        # feature 010: generate-mode applies the completeness step -> symbol_coverage 100%
+        repo = _repo()
+        # add a SECOND symbol the spec will NOT mention, so 100% is only reachable via the step
+        with open(os.path.join(repo, "pkg", "extra.py"), "w") as f:
+            f.write("class Unmentioned:\n    pass\n")
+
+        class ThinProvider:   # spec names only create_app; Unmentioned must be auto-accounted
+            def complete(self, prompt, system=None):
+                return _spec("pkg/app.py:create_app")
+
+        r = run_entry(BenchmarkEntry("gen", repo, ""), tempfile.mkdtemp(),
+                      mode="generate", provider=ThinProvider(), skill_text="# skill")
+        self.assertIsNotNone(r.structure)
+        self.assertGreaterEqual(r.structure.symbol_total, 2)
+        self.assertEqual(r.structure.symbol_coverage, 1.0)   # guaranteed by the completeness step
+
 
 if __name__ == "__main__":
     unittest.main()

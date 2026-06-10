@@ -1,7 +1,7 @@
 ---
 name: repo-skillopt
 description: Evidence-grounded legacy-repository understanding with recurrent human feedback and bounded skill convergence. Activates when the user asks to understand, map, document, onboard to, refactor, modify, or assess a repository.
-version: 0.3.0
+version: 0.4.0
 ---
 
 # RepoSkillOpt — Canonical Skill
@@ -43,6 +43,8 @@ Execute the following stages in order. Skipping or reordering stages weakens the
 (f) **Produce a Repository Specification.** Use the Repository Specification template at `templates/repository-specification.md` and fill all 19 required sections. Apply the label-and-citation discipline from *Output Discipline*.
 
 (g) **Identify risks, unknowns, and safe next steps.** Populate *Known risks* with repository-specific (not generic) risks, each tied to evidence. Populate *Unknowns and unresolved questions* with every gap surfaced during stages (a)–(f). Suggest concrete next steps a human can take to resolve key unknowns.
+
+(h) **Guarantee symbol completeness (deterministic — final action).** Before finishing, make the *Symbols not yet analyzed* listing **complete and mechanical**: every function and class not already discussed must appear there, grouped by file, with the counts line. Generate this listing deterministically — by running a completeness helper that enumerates the repository's symbols and lists the ones the analysis did not name — rather than transcribing it by hand. Your job is the *analysis* (the prose above); this step guarantees the *accounting* so nothing is silently skipped.
 
 ## Repository Specification Format
 

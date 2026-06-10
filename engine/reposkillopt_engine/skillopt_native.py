@@ -349,6 +349,9 @@ def optimize_repo(skill_text: str, version: str, task: RepoTask, *,
     # Feature 005 outputs: the spec for the final (best) skill_text + its grounding.
     res.skill_text = _set_version(res.skill_text, res.version)  # front matter matches the bumped version
     res.best_spec = cur_spec
+    if task.repo_path:   # feature 010: guarantee 100% symbol accounting in the emitted spec
+        from .completeness import ensure_symbol_completeness
+        res.best_spec = ensure_symbol_completeness(res.best_spec, task.repo_path)
     res.best_reward = cur_reward
     res.citation_rate = cur_ground.rate if cur_ground else 1.0
     return res

@@ -2,6 +2,12 @@
 
 All notable changes to `skills/repo-skillopt/SKILL.md` are recorded here in [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format. Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Each entry's `version:` field matches the `version:` in `SKILL.md`. Adapters' `canonical_version:` fields MUST point at a version listed below.
 
+## [0.4.0] — 2026-06-10
+
+### Added
+
+- **Deterministic symbol-completeness step (workflow stage h)** — the *Symbols not yet analyzed* listing must be generated mechanically (enumerate the repo's symbols, list the ones the analysis didn't name), not hand-transcribed. This makes "every function and class is accounted for" a **guarantee** (symbol-coverage = 100%) rather than a best-effort the model rarely meets on large repos, while `analyzed_fraction` honestly reflects how much got real prose analysis. Engine helper: `reposkillopt-engine complete-spec`; spec `specs/010-completeness-guarantee/`. Mirrored into all four adapters (`canonical_version: 0.4.0`).
+
 ## [0.3.0] — 2026-06-10
 
 ### Added
