@@ -91,9 +91,29 @@ headline shifted from *lift* to **guarantees that always hold**, measured determ
 
 A v0.5.0 spec is **fully grounded, fully sectioned, and accounts for every symbol** before any
 per-repo tuning; the optimizer then closes the last grounding gap and trims malformed citations.
-`analyzed_fraction` (how much got real prose analysis, ~32%) is reported honestly and separately —
-*accounting* is guaranteed 100%, *analysis depth* is best-effort. Method, exact numbers, and
-reproduce steps in [`rubric/benchmarks/`](rubric/benchmarks/).
+`analyzed_fraction` (how much got real prose analysis) is reported honestly and separately —
+*accounting* is guaranteed 100%, *analysis depth* is best-effort.
+
+click is a small, near-ceiling library — so the *lift* shows on a **larger real-world repo**.
+On `eco-standard-wiki` (1,617 functions/classes, **79 DB tables**), per-repo optimization at
+v0.5.0 closes a real grounding gap *and* perfects the ER diagram:
+
+*Lift on a large real repo — clean A/B on `eco-standard-wiki` at canonical **v0.5.0**:*
+
+| Deterministic axis | Canonical v0.5.0 | Per-repo optimized |
+|---|---|---|
+| Citation grounding (cited `file:line` resolve) | 87.4% (173/198) | **99.0%** (204/206) |
+| **ER-diagram grounding** (entities vs real tables) | 92.3% | **100%** |
+| Analyzed fraction (symbols given real prose analysis) | 10.7% | **27.8%** |
+| Malformed-citation rate (lower is better) | 5.1% | **3.4%** |
+| Symbol coverage / Section completeness | 100% / 100% | 100% / 100% |
+
+The optimizer accepted **2 of 2** rounds (it learned, from eco-wiki's own grounding failures, to
+cite real paths and to ground every ER entity to a schema file). The generated spec carries **two
+Mermaid `flowchart` traces and a 100%-grounded `erDiagram`** of the real tables — concrete proof
+the v0.5.0 presentation format (tables + flowcharts + ER diagram) holds up on a production codebase.
+
+Method, exact numbers, and reproduce steps in [`rubric/benchmarks/`](rubric/benchmarks/).
 
 ## 🧩 Architecture at a glance
 
