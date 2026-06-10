@@ -34,27 +34,32 @@ Authoring rules (do not delete this comment block; remove the *contents* as you 
 4. All 19 sections below MUST be present in this order, even if empty — write "None known" or "Not applicable" rather than deleting a section.
 -->
 
-## Repository overview
+## 1. Repository overview
 
 <!-- One short paragraph (2–4 sentences). What this repository is, what it does, who uses it. Use **[fact]** with citations to README, package metadata, or descriptive code comments. -->
 
-## Technology stack
+## 2. Technology stack
 
 <!-- Language(s), framework(s), package manager(s), runtime version(s). Cite manifests (pyproject.toml, package.json, go.mod, pom.xml, etc.). -->
 
-## Build and runtime commands
+| Component | Choice | Version | Evidence | Label |
+|-----------|--------|---------|----------|-------|
+| Language | <lang> | <ver> | `path:line` | [fact] |
+| Package manager | <tool> | — | `path:line` | [fact] |
+
+## 3. Build and runtime commands
 
 <!-- How to build, test, run. Cite CI configs, Makefiles, scripts/ entries, package.json scripts. -->
 
-## Major entrypoints
+## 4. Major entrypoints
 
 <!-- HTTP routes, CLI commands, library public APIs, scheduled jobs, CLI scripts. Cite the file:symbol of each entrypoint. -->
 
-## Architectural layers
+## 5. Architectural layers
 
 <!-- Layer names and responsibilities (e.g., transport / domain / persistence). Cite a representative file per layer. -->
 
-## Core modules
+## 6. Core modules
 
 <!-- Module name → one-line purpose. Cite the module path.
 
@@ -71,11 +76,11 @@ Authoring rules (do not delete this comment block; remove the *contents* as you 
   Counts: N defined, M analyzed, N−M listed.
 -->
 
-## Domain model
+## 7. Domain model
 
 <!-- Domain concepts and their relationships. Cite where each concept is defined. -->
 
-## Data model
+## 8. Data model
 
 <!-- Persistent data structures, schemas, table layouts, document shapes. Cite migration files, schema definitions, ORM models, or example documents.
 
@@ -91,49 +96,78 @@ Authoring rules (do not delete this comment block; remove the *contents* as you 
   ```
 -->
 
-## External integrations
+## 9. External integrations
 
 <!-- Third-party services, APIs, libraries with side effects, message brokers. Cite where the integration is invoked. -->
 
-## Control-flow traces
+## 10. Control-flow traces
 
-<!-- For one or more user-relevant behaviors: entrypoint → intermediate modules → core logic → side effects/persistence. Cite at each hop. -->
+<!-- Lead with a mermaid flowchart of the behavior end to end, then the cited steps beneath.
+     The diagram carries no citations; each hop it shows reappears as a labeled, cited line. -->
 
-## Data-flow traces
+```mermaid
+flowchart TD
+  entry["entrypoint"] --> mid["intermediate module"] --> core["core logic"] --> effect["side effect / persistence"]
+```
 
-<!-- For one or more pieces of data: ingress → transformation → storage/egress. Cite at each hop. -->
+1. **[fact]** <entrypoint hop> `path:line`.
+2. **[fact]** <core-logic hop> `path:line`.
 
-## Dependency map
+## 11. Data-flow traces
+
+<!-- Lead with a mermaid flowchart of one piece of data: ingress → transformation → storage/egress. -->
+
+```mermaid
+flowchart LR
+  ingress["ingress"] --> transform["transformation"] --> store["storage / egress"]
+```
+
+1. **[fact]** <ingress hop> `path:line`.
+2. **[fact]** <transformation hop> `path:line`.
+
+## 12. Dependency map
 
 <!-- Internal module dependencies; external library dependencies; direct vs transitive. Cite manifest. -->
 
-## Configuration map
+| Dependency | Kind | Scope / notes | Evidence | Label |
+|------------|------|---------------|----------|-------|
+| <name> | external / internal | direct / transitive | `path:line` | [fact] |
 
-<!-- Configurable parameters, where they're declared, their defaults, how they're consumed. Cite config files and the call sites that read them. -->
+## 13. Configuration map
 
-## Testing strategy
+<!-- Configurable parameters, where they're declared, their defaults, how they're consumed. -->
+
+| Parameter | Default | Declared in | Consumed at | Evidence | Label |
+|-----------|---------|-------------|-------------|----------|-------|
+| <name> | <default> | `path` | `path:line` | `path:line` | [fact] |
+
+## 14. Testing strategy
 
 <!-- Test types present (unit / integration / e2e), test runner, coverage posture. Cite test directories and runner config. -->
 
-## Deployment assumptions
+## 15. Deployment assumptions
 
 <!-- Where this software is expected to run; required environment; secrets handling. Cite deployment files or runbooks if present; mark assumptions explicitly. -->
 
-## Change-impact map
+## 16. Change-impact map
 
 <!-- For one or more anticipated changes: which files/modules would be touched; which tests would need updating. -->
 
-## Known risks
+## 17. Known risks
 
 <!-- Repository-specific risks (not generic platitudes). Cite the code or config that motivates each risk. -->
 
-## Unknowns and unresolved questions
+## 18. Unknowns and unresolved questions
 
 <!-- Bullet list of every **[unknown]** claim above, plus any open questions raised during analysis. -->
 
-## Evidence index
+## 19. Evidence index
 
-<!-- Every distinct citation used in the document, de-duplicated. One bullet per citation. -->
+<!-- Every distinct citation used in the document, de-duplicated. One row per citation. -->
+
+| Citation | What it supports |
+|----------|------------------|
+| `path:line` | <claim it grounds> |
 
 <!-- Optional appendix below — only when a revision history exists. -->
 

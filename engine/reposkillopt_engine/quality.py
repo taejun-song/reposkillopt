@@ -32,8 +32,19 @@ class QualityMetrics:
     quality_score: float
 
 
+# Strip a leading section enumerator ("1. ", "12) ", "3 - ") and emphasis ("**", "`")
+# so a readable numbered heading like "## 1. Repository overview" still matches its
+# canonical name. Mirrors grounding.py's tolerant substring check (which already passed
+# on numbered headings) — without this, section_completeness wrongly read 0% on a fully
+# sectioned spec.
+_ENUM_RE = re.compile(r"^\s*(?:\d+\s*[.):\-]\s+)?[*_`\s]*")
+
+
 def _section_text(spec_text: str, name: str) -> str | None:
-    """Body under `## <name>` up to the next `## ` heading, or None if the section is absent."""
+    """Body under `## <name>` up to the next `## ` heading, or None if the section is absent.
+
+    Tolerant of numbered/decorated headings: `## 1. Repository overview` matches `Repository overview`.
+    """
     out: list[str] = []
     capturing = False
     low = name.lower()
@@ -42,7 +53,8 @@ def _section_text(spec_text: str, name: str) -> str | None:
         if s.startswith("## "):
             if capturing:
                 break
-            if s[3:].strip().lower().startswith(low):
+            head = _ENUM_RE.sub("", s[3:].strip()).lower()
+            if head.startswith(low):
                 capturing = True
             continue
         if capturing:
