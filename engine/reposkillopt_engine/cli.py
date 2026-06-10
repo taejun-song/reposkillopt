@@ -161,6 +161,21 @@ def cmd_complete_spec(args) -> int:
     return 0
 
 
+def cmd_render(args) -> int:
+    from .render import render
+    spec = Path(args.spec)
+    if not spec.is_file():
+        print(f"error: spec not found: {spec}", file=sys.stderr)
+        return 2
+    out = render(spec.read_text(), args.view)
+    if args.out:
+        Path(args.out).write_text(out)
+        print(f"wrote {args.view} view -> {args.out}", file=sys.stderr)
+    else:
+        sys.stdout.write(out)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="reposkillopt-engine")
     p.add_argument("--provider", default="fake", help="fake | anthropic:<model> | openai:<model>")
@@ -214,6 +229,14 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--spec", required=True, help="path to the Repository Specification to complete")
     c.add_argument("--out", help="write here (default: stdout)")
     c.set_defaults(func=cmd_complete_spec)
+
+    rv = sub.add_parser("render",
+                        help="project a spec into an audience-specific view (deterministic, model-free)")
+    rv.add_argument("--spec", required=True, help="path to the Repository Specification")
+    rv.add_argument("--view", required=True, choices=["agent", "structured"],
+                    help="agent: lean Markdown (no diagrams/comments) | structured: JSON of claims+citations")
+    rv.add_argument("--out", help="write here (default: stdout)")
+    rv.set_defaults(func=cmd_render)
 
     args = p.parse_args(argv)
     return args.func(args)

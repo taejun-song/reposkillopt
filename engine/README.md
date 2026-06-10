@@ -153,6 +153,26 @@ canonical skill): `<repo>/.reposkillopt/best_skill.md` and
 > selection, the SkillOpt apply/gate chain, rollout shaping, the evidence pack, and citation
 > grounding) are unit-tested, and the live loop is validated by running it.
 
+## Audience-specific views (`render`) — one source of truth, derived projections
+
+The Repository Specification is **one** evidence-grounded Markdown document. Rather than
+authoring separate human and agent copies (which drift, and would each need grounding), the
+engine derives audience-specific views **deterministically** from that single spec:
+
+```sh
+# Lean Markdown for feeding a coding agent: drops mermaid diagrams + authoring comments,
+# keeps every labeled, cited claim and table (~70% smaller on a diagram-rich spec).
+reposkillopt-engine render --spec <repo>/.reposkillopt/specs/repository-specification.md --view agent
+
+# Structured JSON for programmatic upgrade tooling: {meta, sections:[{section, claims:[{label,
+# text, citations}]}], evidence_index, counts}.
+reposkillopt-engine render --spec … --view structured --out spec.json
+```
+
+Both are pure functions of the spec text (no model, no repo access, no drift). The human reads
+the full Markdown (tables + flowcharts + ER diagram); the agent gets the lean view or the JSON.
+`render.py` is model-free and unit-tested.
+
 ## Tests
 
 ```sh
