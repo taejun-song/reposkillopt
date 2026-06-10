@@ -60,6 +60,21 @@ class TestCompleteness(unittest.TestCase):
         b = ensure_symbol_completeness(spec, self.repo)
         self.assertEqual(a, b)
 
+    def test_model_emitted_partial_section_still_reaches_100(self):
+        # Regression: the skill tells the model to write its own "Symbols not yet analyzed"
+        # section. When it does so PARTIALLY and mid-document, the old code judged "missing"
+        # against the removed section and dropped the files it named (live 71%/94% leak).
+        spec = (
+            "## Core modules\n**[fact]** create_app `pkg/app.py:1`.\n\n"
+            "## Symbols not yet analyzed\n\n- pkg/app.py: AuthService\n\n"   # PARTIAL, mid-doc
+            "## Data model\nThe Widget renders.\n"                           # heading AFTER it
+        )
+        done = ensure_symbol_completeness(spec, self.repo)
+        self.assertEqual(self._cov(done), 1.0)                      # render must not vanish
+        self.assertEqual(done.count("## Symbols not yet analyzed"), 1)  # no duplicate section
+        # idempotent even from the partial-section starting point
+        self.assertEqual(ensure_symbol_completeness(done, self.repo), done)
+
 
 if __name__ == "__main__":
     unittest.main()
