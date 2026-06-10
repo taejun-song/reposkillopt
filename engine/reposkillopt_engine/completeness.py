@@ -32,17 +32,20 @@ def ensure_symbol_completeness(spec_text: str, repo_path: str, *, max_chars: int
     if not syms:
         return spec_text
 
-    body, existing = _split_existing(spec_text)
+    # Drop any prior "Symbols not yet analyzed" section (the model may have emitted its own,
+    # possibly PARTIAL, one — the skill instructs it to). We REBUILD a complete section from
+    # scratch, so a symbol is accounted iff its name appears in the kept body. Judging "missing"
+    # against the *removed* section would silently drop the files it named — they'd be neither in
+    # the body nor re-listed (the 71%/94% leak this fixes).
+    body, _existing = _split_existing(spec_text)
 
-    # accounted = name appears anywhere in the spec, OR its file is already listed in the section.
     missing_by_file: dict[str, list[str]] = {}
     analyzed = 0
     for s in syms:
-        named = re.search(rf"\b{re.escape(s.name)}\b", spec_text) is not None
-        listed = bool(existing) and s.file in existing
-        if named and re.search(rf"\b{re.escape(s.name)}\b", body):
+        in_body = re.search(rf"\b{re.escape(s.name)}\b", body) is not None
+        if in_body:
             analyzed += 1
-        if not (named or listed):
+        else:
             missing_by_file.setdefault(s.file, []).append(s.name)
 
     if not missing_by_file:
