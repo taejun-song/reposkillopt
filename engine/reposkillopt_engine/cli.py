@@ -148,7 +148,8 @@ def cmd_benchmark(args) -> int:
     print(f"benchmarking grounding ({args.mode} mode) over {manifest} …", file=sys.stderr)
     report = run_benchmark(manifest.read_text(), mode=args.mode, date=args.date,
                            provider=provider, skill_text=skill_text, base_dir=str(repo_root),
-                           with_rubric=args.rubric, pack_opts=_pack_opts(args))
+                           with_rubric=args.rubric, pack_opts=_pack_opts(args),
+                           section_scoped=getattr(args, "section_scoped", False))
     out_dir = Path(args.out) if args.out else (repo_root / "rubric" / "benchmarks")
     out_dir.mkdir(parents=True, exist_ok=True)
     out_file = out_dir / f"{args.date}-grounding.md"
@@ -249,6 +250,9 @@ def main(argv: list[str] | None = None) -> int:
                    help="generate-mode: evidence-pack character budget (default 60000)")
     b.add_argument("--low-context", action="store_true",
                    help="generate-mode: shrink the evidence pack (~24k chars) for small context windows")
+    b.add_argument("--section-scoped", action="store_true",
+                   help="generate-mode: produce the spec section-by-section from per-section retrieval "
+                        "(lowers PEAK context per call; may raise TOTAL tokens). Opt-in; default off.")
     b.set_defaults(func=cmd_benchmark)
 
     c = sub.add_parser("complete-spec",
