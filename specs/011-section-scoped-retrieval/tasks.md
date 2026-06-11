@@ -33,7 +33,7 @@ Tests are deterministic stdlib `unittest` (model-free). Single-pack default must
 
 ## Phase 6: Polish & validation
 
-- [~] T013 Live validation on `eco-standard-wiki`: section-scoped generate; confirm peak per-section ≤ ½ full pack (SC-001), spec scores 100% symbol coverage + 19 sections + grounded ER (SC-002); record figures.
+- [x] T013 Live validation on `eco-standard-wiki`: section-scoped generate; confirm peak per-section ≤ ½ full pack (SC-001), spec scores 100% symbol coverage + 19 sections + grounded ER (SC-002); record figures.
 - [x] T014 Docs: engine README "section-scoped" subsection (peak-vs-total tradeoff stated honestly); reference rubric/benchmarks record.
 - [~] T015 [optional, FR-012] If a skill "retrieve per section" note is added, mirror to all 4 adapters + bump canonical version; else explicitly defer in the PR.
 
