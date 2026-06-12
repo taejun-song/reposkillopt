@@ -5,7 +5,7 @@
 ### Teach any coding agent to understand a legacy repo — and produce an evidence-grounded spec it can't fake.
 
 [![license](https://img.shields.io/badge/license-Apache%202.0-4F46E5)](LICENSE)
-[![canonical skill](https://img.shields.io/badge/canonical%20skill-v0.6.0-4F46E5)](skills/repo-skillopt/SKILL.md)
+[![canonical skill](https://img.shields.io/badge/canonical%20skill-v0.7.0-4F46E5)](skills/repo-skillopt/SKILL.md)
 ![engine tests](https://img.shields.io/badge/engine%20tests-116%20passing-10B981)
 ![runs](https://img.shields.io/badge/runs-keyless%20%7C%20offline-10B981)
 ![scoring](https://img.shields.io/badge/scoring-deterministic-64748B)
