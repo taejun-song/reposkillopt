@@ -1,6 +1,16 @@
-# RepoSkillOpt
+<div align="center">
 
-> **Teach any coding agent to understand a legacy repo — and produce an evidence-grounded spec it can't fake.**
+<img src="assets/logo.svg" alt="RepoSkillOpt" width="460">
+
+### Teach any coding agent to understand a legacy repo — and produce an evidence-grounded spec it can't fake.
+
+[![license](https://img.shields.io/badge/license-Apache%202.0-4F46E5)](LICENSE)
+[![canonical skill](https://img.shields.io/badge/canonical%20skill-v0.6.0-4F46E5)](skills/repo-skillopt/SKILL.md)
+![engine tests](https://img.shields.io/badge/engine%20tests-116%20passing-10B981)
+![runs](https://img.shields.io/badge/runs-keyless%20%7C%20offline-10B981)
+![scoring](https://img.shields.io/badge/scoring-deterministic-64748B)
+
+</div>
 
 RepoSkillOpt is a portable, vendor-neutral **Markdown skill** (plus optional tooling) that gives Claude Code, Codex, OpenCode, or any custom agent a disciplined way to read an unfamiliar codebase: every major claim is **labeled and cited to a real `file:line`**, uncertainty is called out, and your feedback is folded back into the skill itself.
 
