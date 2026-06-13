@@ -1,7 +1,7 @@
 ---
 name: repo-skillopt
 description: Evidence-grounded legacy-repository understanding with recurrent human feedback and bounded skill convergence. Activates when the user asks to understand, map, document, onboard to, refactor, modify, or assess a repository.
-version: 0.9.0
+version: 0.10.0
 ---
 
 # RepoSkillOpt — Canonical Skill
