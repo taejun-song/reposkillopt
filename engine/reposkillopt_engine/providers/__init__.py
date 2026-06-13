@@ -27,6 +27,10 @@ def make_provider(spec: str, **kwargs) -> LLMProvider:
             model = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
         from .openai_compatible import OpenAICompatibleProvider
         return OpenAICompatibleProvider(model=model, **kwargs)
+    if name == "ollama":                 # local open-source models via Ollama's OpenAI shim
+        from .openai_compatible import OpenAICompatibleProvider
+        kwargs.setdefault("base_url", os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1"))
+        return OpenAICompatibleProvider(model=model or "qwen2.5-coder", **kwargs)
     if name in ("claude-cli", "claude_cli", "cli"):
         from .claude_cli import ClaudeCLIProvider
         return ClaudeCLIProvider(**kwargs)

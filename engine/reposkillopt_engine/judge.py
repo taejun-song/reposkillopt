@@ -37,7 +37,8 @@ def generate_spec(provider: LLMProvider, skill_text: str, repo_name: str, repo_c
         f"<skill>\n{skill_text}\n</skill>\n\n"
         f"<repository name=\"{repo_name}\">\n{repo_content}\n</repository>\n"
     )
-    return provider.complete(prompt, system="You are a careful repository-understanding agent.")
+    from .sanitize import sanitize_model_spec
+    return sanitize_model_spec(provider.complete(prompt, system="You are a careful repository-understanding agent."))
 
 
 def generate_section(provider: LLMProvider, skill_text: str, repo_name: str,
@@ -53,7 +54,8 @@ def generate_section(provider: LLMProvider, skill_text: str, repo_name: str,
         f"<section>{section_heading}</section>\n"
         f"<repository name=\"{repo_name}\">\n{section_evidence}\n</repository>\n"
     )
-    return provider.complete(prompt, system="You are a careful repository-understanding agent.")
+    from .sanitize import sanitize_model_spec
+    return sanitize_model_spec(provider.complete(prompt, system="You are a careful repository-understanding agent."))
 
 
 def generate_spec_section_scoped(provider: LLMProvider, skill_text: str, repo_name: str,
