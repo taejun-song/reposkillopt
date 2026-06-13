@@ -2,6 +2,12 @@
 
 All notable changes to `skills/repo-skillopt/SKILL.md` are recorded here in [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format. Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Each entry's `version:` field matches the `version:` in `SKILL.md`. Adapters' `canonical_version:` fields MUST point at a version listed below.
 
+## [0.8.0] — 2026-06-13
+
+### Added
+
+- **Repository ontology substrate (feature 012)** — *Domain model* (§7) and *Data model* (§8) are now built from a deterministic, model-free codebase ontology: entities of fixed kinds (module, class, function, data entity, route, job, abstraction) each pinned to `file:line`, and relations (imports, inherits, foreign-key, registers-route, schedules). §7 gains a high-level entity-map table + relationship `graph`; §8's `erDiagram` is the data-entity slice. Abstractions are detected **structurally** (base-class fan-in ≥2), not via a repo-specific allowlist (vendor-neutrality). Agents locate entities with `rg`-first scan-don't-read (grep fallback) and cite only matched lines. Engine: new `reposkillopt_engine/ontology.py` + `reposkillopt-engine ontology` CLI; reuses the frozen `extract_symbols`/`extract_schema` and the erDiagram parser (round-trip preserved, so `diagram_grounding` is unchanged). It is the substrate for the forthcoming Business-workflows (013) and Refactoring-opportunities (014) views. No grounding/rubric/reward/metric-definition change; enriches §7/§8 (no new required section). Mirrored into all four adapters (`canonical_version: 0.8.0`).
+
 ## [0.7.0] — 2026-06-12
 
 ### Added

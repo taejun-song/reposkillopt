@@ -181,6 +181,30 @@ def cmd_complete_spec(args) -> int:
     return 0
 
 
+def cmd_ontology(args) -> int:
+    import json as _json
+
+    from .ontology import (build_ontology, render_entity_map, render_er_diagram,
+                           render_relationship_graph, to_structured)
+    repo = Path(args.repo)
+    if not repo.is_dir():
+        print(f"error: not a directory: {repo}", file=sys.stderr)
+        return 2
+    onto = build_ontology(str(repo))
+    if args.json:
+        sys.stdout.write(_json.dumps(to_structured(onto), indent=2) + "\n")
+        return 0
+    print(render_entity_map(onto))
+    print("\n### Relationship graph\n")
+    print(render_relationship_graph(onto))
+    print("\n### Data model (ER)\n")
+    print(render_er_diagram(onto))
+    c = to_structured(onto)["counts"]
+    print(f"\n# {sum(c.values())} entities, {len(onto.relations)} relations, "
+          f"{len(onto.unresolved)} unresolved", file=sys.stderr)
+    return 0
+
+
 def cmd_render(args) -> int:
     from .render import render
     spec = Path(args.spec)
@@ -261,6 +285,12 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--spec", required=True, help="path to the Repository Specification to complete")
     c.add_argument("--out", help="write here (default: stdout)")
     c.set_defaults(func=cmd_complete_spec)
+
+    on = sub.add_parser("ontology",
+                        help="build the deterministic codebase ontology (entities + relations), model-free")
+    on.add_argument("repo", help="path to the repository")
+    on.add_argument("--json", action="store_true", help="emit structured JSON instead of Markdown views")
+    on.set_defaults(func=cmd_ontology)
 
     rv = sub.add_parser("render",
                         help="project a spec into an audience-specific view (deterministic, model-free)")
