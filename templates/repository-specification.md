@@ -173,6 +173,18 @@ flowchart LR
 
 <!-- For one or more anticipated changes: which files/modules would be touched; which tests would need updating. -->
 
+## 16a. Refactoring opportunities
+
+<!-- Advisory, **[inference]** only. Report clusters of structurally-near-duplicate functions
+     (same shape, different names/literals) that could be abstracted — only above a low-noise
+     threshold (≥3 instances, ≥8 tokens), each instance cited file:line, with a suggested
+     abstraction (shared helper / base method / decorator). Keep the exception type in the shape so
+     different handlers don't merge. Never [fact]; never gated. "None known." when nothing qualifies. -->
+
+_<N> repeated structures across <M> functions (advisory — **[inference]** only)._
+
+- **[inference]** **medium** — <k> functions share one shape; extract a shared helper. Instances: `path:line`, `path:line`.
+
 ## 17. Known risks
 
 <!-- Repository-specific risks (not generic platitudes). Cite the code or config that motivates each risk. -->

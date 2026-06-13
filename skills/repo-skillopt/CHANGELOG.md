@@ -2,6 +2,14 @@
 
 All notable changes to `skills/repo-skillopt/SKILL.md` are recorded here in [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format. Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Each entry's `version:` field matches the `version:` in `SKILL.md`. Adapters' `canonical_version:` fields MUST point at a version listed below.
 
+## [0.10.0] — 2026-06-13
+
+### Added
+
+- **Refactoring opportunities (§16a, feature 015)** — an advisory, **[inference]**-only section reporting clusters of structurally-near-duplicate functions (same shape, different names/literals) that could be abstracted, with a suggested abstraction and every instance cited. Detected deterministically by normalizing each function body to its shape (identifiers/literals replaced; keywords and the `except`/`raise` type kept) and grouping identical shapes; low-noise threshold (≥3 instances, ≥8 tokens). A derived view over the 012 ontology; engine: `reposkillopt_engine/refactor.py` + `reposkillopt-engine refactors` CLI. Inserted after §16; never `[fact]`, never gated — section-completeness, labeled-claim rate, rubric, and reward are unaffected. Mirrored into all four adapters (`canonical_version: 0.10.0`).
+
+This completes the ontology suite: **codebase ontology (012) → business workflows (014) → refactoring opportunities (015)**, alongside open-source/local LLM robustness (013).
+
 ## [0.9.0] — 2026-06-13
 
 ### Added
