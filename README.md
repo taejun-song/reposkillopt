@@ -1,6 +1,9 @@
 <div align="center">
 
-<img src="assets/logo.svg" alt="RepoSkillOpt" width="460">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg">
+  <img src="assets/logo.svg" alt="RepoSkillOpt" width="460">
+</picture>
 
 ### Teach any coding agent to understand a legacy repo — and produce an evidence-grounded spec it can't fake.
 
