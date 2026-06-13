@@ -205,6 +205,19 @@ def cmd_ontology(args) -> int:
     return 0
 
 
+def cmd_workflows(args) -> int:
+    from .workflow import analyze_workflows, render_workflow_section
+    repo = Path(args.repo)
+    if not repo.is_dir():
+        print(f"error: not a directory: {repo}", file=sys.stderr)
+        return 2
+    rep = analyze_workflows(str(repo))
+    sys.stdout.write(render_workflow_section(rep))
+    print(f"# {sum(rep.counts.values())} business entrypoints "
+          f"({', '.join(f'{k}:{rep.counts[k]}' for k in sorted(rep.counts))})", file=sys.stderr)
+    return 0
+
+
 def cmd_render(args) -> int:
     from .render import render
     spec = Path(args.spec)
@@ -291,6 +304,11 @@ def main(argv: list[str] | None = None) -> int:
     on.add_argument("repo", help="path to the repository")
     on.add_argument("--json", action="store_true", help="emit structured JSON instead of Markdown views")
     on.set_defaults(func=cmd_ontology)
+
+    wf = sub.add_parser("workflows",
+                        help="enumerate + trace every business-process pipeline (route/job/cli), model-free")
+    wf.add_argument("repo", help="path to the repository")
+    wf.set_defaults(func=cmd_workflows)
 
     rv = sub.add_parser("render",
                         help="project a spec into an audience-specific view (deterministic, model-free)")
