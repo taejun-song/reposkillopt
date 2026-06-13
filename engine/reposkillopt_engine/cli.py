@@ -270,7 +270,7 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--opt-backend", default="claude-code",
                    help="SkillOpt edit-generator backend: claude-code (keyless) | openai | qwen | minimax")
     r.add_argument("--rollout-provider", default="claude-cli",
-                   help="spec generate/score provider: claude-cli | anthropic:<model> | openai:<model>")
+                   help="spec generate/score provider: claude-cli | opencode-cli | anthropic:<model> | openai:<model> | ollama:<model>")
     r.add_argument("--rounds", type=int, default=None,
                    help="optimize rounds (default 2; --low-context defaults this to 1)")
     r.add_argument("--pack-budget", type=int, default=None,
@@ -291,7 +291,7 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--date", required=True, help="report date YYYY-MM-DD (kept explicit for reproducibility)")
     b.add_argument("--skill", help="generate mode: path to the SKILL.md to regenerate specs with")
     b.add_argument("--rollout-provider", default="claude-cli",
-                   help="generate mode: spec provider (claude-cli | anthropic:<model> | openai:<model>)")
+                   help="generate mode: spec provider (claude-cli | opencode-cli | anthropic:<model> | openai:<model> | ollama:<model>)")
     b.add_argument("--rubric", action="store_true",
                    help="ALSO report the LLM rubric score (non-reproducible, off by default; needs a provider)")
     b.add_argument("--timeout", type=float, default=900.0,

@@ -45,6 +45,7 @@ Or install the console script: `pip install -e engine` → `reposkillopt-engine 
 | `openai:<model>` | OpenAI **or any OpenAI-compatible endpoint** — vLLM, Ollama's OpenAI shim, llama.cpp server, LM Studio, etc. | `OPENAI_API_KEY`, `OPENAI_BASE_URL` |
 | `ollama:<model>` | **Open-source models via Ollama**, no key — defaults `base_url` to `http://localhost:11434/v1` (override `OLLAMA_BASE_URL`) | — |
 | `claude-cli` | Local **Claude Code CLI** (`claude -p`) — real LLM calls with **no API key** when run where `claude` is installed | — |
+| `opencode-cli` / `opencode-cli:<provider/model>` | Local **OpenCode CLI** (`opencode run`) — real LLM calls with **no API key**, using OpenCode's configured model (incl. local/OSS) when `opencode` is installed and authed | — |
 
 Open-source / local models are reached through `ollama:<model>` (e.g. `ollama:qwen2.5-coder`) or
 `openai:<model>` with `OPENAI_BASE_URL` at the local server. **Chat-model output is sanitized**

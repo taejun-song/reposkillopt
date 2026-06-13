@@ -34,6 +34,9 @@ def make_provider(spec: str, **kwargs) -> LLMProvider:
     if name in ("claude-cli", "claude_cli", "cli"):
         from .claude_cli import ClaudeCLIProvider
         return ClaudeCLIProvider(**kwargs)
+    if name in ("opencode-cli", "opencode_cli"):
+        from .opencode_cli import OpenCodeCLIProvider
+        return OpenCodeCLIProvider(model=model or None, **kwargs)
     raise ProviderError(f"unknown provider: {spec!r}")
 
 
