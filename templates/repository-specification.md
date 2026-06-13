@@ -83,7 +83,22 @@ Authoring rules (do not delete this comment block; remove the *contents* as you 
 
 ## 7. Domain model
 
-<!-- Domain concepts and their relationships. Cite where each concept is defined. -->
+<!-- Build the repository ONTOLOGY first: an entity map of fixed kinds (module, class, function,
+     data entity, route, job, abstraction) each pinned to file:line, plus the relations between them
+     (imports, inherits, foreign-key, registers-route, schedules). Present a high-level entity table
+     and a relationship graph. Detect abstractions structurally (a base class inherited by ≥2 others),
+     not by a repo-specific name list. Mark name-resolution/dynamic-dispatch edges [inference]/[unknown];
+     never draw an unresolved relation as a hard edge. -->
+
+| Entity kind | Count | Examples (file:line) |
+|-------------|-------|----------------------|
+| <kind> | <n> | `<name>` (`path:line`) |
+
+```mermaid
+graph LR
+  OrderService["OrderService"] -->|inherits| Service["Service"]
+  api_orders["POST /orders"] -->|route| app_api_py["app/api.py"]
+```
 
 ## 8. Data model
 

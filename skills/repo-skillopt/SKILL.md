@@ -1,7 +1,7 @@
 ---
 name: repo-skillopt
 description: Evidence-grounded legacy-repository understanding with recurrent human feedback and bounded skill convergence. Activates when the user asks to understand, map, document, onboard to, refactor, modify, or assess a repository.
-version: 0.7.0
+version: 0.8.0
 ---
 
 # RepoSkillOpt — Canonical Skill
@@ -74,7 +74,9 @@ Empty-by-design sections explicitly state "None known" or "Not applicable" — t
 
 **Symbol accounting (no silent omission).** Every function and class defined in the repository MUST be accounted for: either referenced in an analytical claim/citation, or listed under a **"Symbols not yet analyzed"** subsection of *Core modules* (grouped by file; per-file counts are acceptable on large repositories). State the counts — *N defined, M analyzed, N−M listed* — so a reader can see nothing was hidden. Exclude generated/vendored directories.
 
-**Data-model diagram.** When the repository has a database or persistent schema, the *Data model* section MUST include a fenced ` ```mermaid ` block containing an `erDiagram` of the real tables/models — their key columns and foreign-key relationships — with each entity traceable to the schema file that defines it (migration, DDL, or ORM model). When there is no persistent schema, state "Not applicable"; never draw a fabricated schema.
+**Repository ontology (build it first).** Before writing *Domain model* and *Data model*, construct the repository's ontology: an inventory of **entities** of fixed kinds — *module, class, function, data entity, route, job, abstraction* — each pinned to `file:line`, and the **relations** between them — *imports, inherits, foreign-key, registers-route, schedules*. Locate them with a fast scanner (`rg` where available, falling back to `grep`/`git ls-files`) and read only the matched lines you cite — do not load whole files. Present in *Domain model* a high-level **entity-map table** (kind · count · examples with citations) and a **relationship `graph`**. Detect *abstraction* entities **structurally** — a base class inherited by two or more others — not from a fixed repo-specific name list. A relation whose target cannot be resolved to a known entity is `**[inference]**`/`**[unknown]**` and MUST NOT be drawn as a hard edge.
+
+**Data-model diagram.** When the repository has a database or persistent schema, the *Data model* section MUST include a fenced ` ```mermaid ` block containing an `erDiagram` of the real tables/models — their key columns and foreign-key relationships — with each entity traceable to the schema file that defines it (migration, DDL, or ORM model). The `erDiagram` is the data-entity slice of the ontology. When there is no persistent schema, state "Not applicable"; never draw a fabricated schema.
 
 **Presentation format.** A specification is read by humans, so favour scannable structure:
 
