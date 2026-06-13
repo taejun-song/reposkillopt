@@ -43,10 +43,16 @@ Or install the console script: `pip install -e engine` → `reposkillopt-engine 
 | `fake` (default) | Deterministic offline provider for tests/dry-runs | — |
 | `anthropic:<model>` | Anthropic Messages API | `ANTHROPIC_API_KEY` |
 | `openai:<model>` | OpenAI **or any OpenAI-compatible endpoint** — vLLM, Ollama's OpenAI shim, llama.cpp server, LM Studio, etc. | `OPENAI_API_KEY`, `OPENAI_BASE_URL` |
+| `ollama:<model>` | **Open-source models via Ollama**, no key — defaults `base_url` to `http://localhost:11434/v1` (override `OLLAMA_BASE_URL`) | — |
 | `claude-cli` | Local **Claude Code CLI** (`claude -p`) — real LLM calls with **no API key** when run where `claude` is installed | — |
 
-Open-source / local models are reached through `openai:<model>` by pointing `OPENAI_BASE_URL`
-at the local server. Adding a new backend = one small `LLMProvider.complete()` subclass.
+Open-source / local models are reached through `ollama:<model>` (e.g. `ollama:qwen2.5-coder`) or
+`openai:<model>` with `OPENAI_BASE_URL` at the local server. **Chat-model output is sanitized**
+(`sanitize.py`): an outer ```` ```markdown ```` wrapper or conversational pre/postamble that open-source
+models add is stripped before grounding/completeness (inner ```` ```mermaid ```` fences preserved), so a
+weaker model's spec still parses. And because scoring is deterministic, the guarantees hold regardless
+of model quality: completeness forces 100% symbol coverage and grounding flags fabricated citations
+even when the model is small. Adding a new backend = one small `LLMProvider.complete()` subclass.
 
 The `claude-cli` provider is what makes a **real, no-API-key** end-to-end run possible inside
 a Claude Code environment — and it is verified: a live `tests/test_claude_cli_live.py`
