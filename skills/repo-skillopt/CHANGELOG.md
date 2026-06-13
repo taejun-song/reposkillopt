@@ -2,6 +2,12 @@
 
 All notable changes to `skills/repo-skillopt/SKILL.md` are recorded here in [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format. Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Each entry's `version:` field matches the `version:` in `SKILL.md`. Adapters' `canonical_version:` fields MUST point at a version listed below.
 
+## [0.9.0] — 2026-06-13
+
+### Added
+
+- **Business workflows (§20, feature 014)** — a new section that enumerates **every** business entrypoint (HTTP route, scheduled job, CLI command) with no silent omission, and traces each as a course of actions (entrypoint → service calls → side effect/persistence) over the ontology, rendered as grounded mermaid `flowchart`s (visual; the cited steps sit beneath). A derived view over the 012 ontology; engine: `reposkillopt_engine/workflow.py` + `reposkillopt-engine workflows` CLI. Appended after §19 so indices 1–19 stay byte-stable; **not** a required section (section-completeness denominator stays 19). Mirrored into all four adapters (`canonical_version: 0.9.0`). No grounding/rubric/reward/metric-definition change.
+
 ## [0.8.0] — 2026-06-13
 
 ### Added

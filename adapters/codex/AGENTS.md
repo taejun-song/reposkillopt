@@ -1,5 +1,5 @@
 <!-- repo-skillopt-meta
-canonical_version: 0.8.0
+canonical_version: 0.9.0
 adapter: codex
 -->
 
@@ -77,6 +77,8 @@ Empty-by-design sections explicitly state "None known" or "Not applicable" — t
 **Repository ontology (build it first).** Before writing *Domain model* and *Data model*, construct the repository's ontology: an inventory of **entities** of fixed kinds — *module, class, function, data entity, route, job, abstraction* — each pinned to `file:line`, and the **relations** between them — *imports, inherits, foreign-key, registers-route, schedules*. Locate them with a fast scanner (`rg` where available, falling back to `grep`/`git ls-files`) and read only the matched lines you cite — do not load whole files. Present in *Domain model* a high-level **entity-map table** (kind · count · examples with citations) and a **relationship `graph`**. Detect *abstraction* entities **structurally** — a base class inherited by two or more others — not from a fixed repo-specific name list. A relation whose target cannot be resolved to a known entity is `**[inference]**`/`**[unknown]**` and MUST NOT be drawn as a hard edge.
 
 **Data-model diagram.** When the repository has a database or persistent schema, the *Data model* section MUST include a fenced ` ```mermaid ` block containing an `erDiagram` of the real tables/models — their key columns and foreign-key relationships — with each entity traceable to the schema file that defines it (migration, DDL, or ORM model). The `erDiagram` is the data-entity slice of the ontology. When there is no persistent schema, state "Not applicable"; never draw a fabricated schema.
+
+**Business workflows (every business pipeline).** In *Business workflows*, enumerate **every** business entrypoint — HTTP route, scheduled job, CLI command — with **no silent omission**: state per-kind counts and the grand total in an enumeration table, each entrypoint pinned to `file:line`. Then trace each as a **course of actions** — entrypoint → service calls → side effect/persistence — over the repository ontology. Locate entrypoints with a fast scanner (`rg`/`grep`) and read only the matched handler windows. Lead each flow with a mermaid `flowchart` (visual; no citations) followed by the authoritative numbered, cited steps. A hop that cannot be resolved statically (dynamic dispatch, indirection) is `**[unknown]**` with a reason — never dropped. This is the business-process counterpart to the *Control-flow traces* section: traces are illustrative; this is the exhaustive enumeration.
 
 **Presentation format.** A specification is read by humans, so favour scannable structure:
 

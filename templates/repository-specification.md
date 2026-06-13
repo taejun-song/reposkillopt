@@ -189,6 +189,31 @@ flowchart LR
 |----------|------------------|
 | `path:line` | <claim it grounds> |
 
+## 20. Business workflows
+
+<!-- Enumerate EVERY business entrypoint (HTTP route, scheduled job, CLI command) with no silent
+     omission — state per-kind counts + the grand total — then trace each as a course of actions
+     (entrypoint → service calls → side effect/persistence). Locate entrypoints with `rg` and read
+     only the matched handler windows. Each flow leads with a mermaid `flowchart` (visual; no
+     citations) followed by the cited steps. Mark untraceable hops [unknown] with a reason. -->
+
+**<N> business entrypoints** — route: <r>, job: <j>, cli: <c>.
+
+| Kind | Entrypoint | Evidence | Handler |
+|------|-----------|----------|---------|
+| route | `POST /orders` | `path:line` | `create_order` |
+
+### route: POST /orders
+
+```mermaid
+flowchart TD
+  n0["entry: create_order"] --> n1["call: place_order"] --> n2["persist: commit"]
+```
+
+1. **[fact]** entry — `create_order` `path:line`.
+2. **[fact]** calls `place_order` `path:line`.
+3. **[fact]** persists `path:line`.
+
 <!-- Optional appendix below — only when a revision history exists. -->
 
 ## Change log
