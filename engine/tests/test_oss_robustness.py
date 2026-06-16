@@ -54,6 +54,34 @@ class TestSanitize(unittest.TestCase):
         self.assertEqual(sanitize_model_spec(once), once)            # idempotent
 
 
+class TestThinkBlocks(unittest.TestCase):
+    """Qwen3-style reasoning models emit <think>…</think> before the answer."""
+    def test_strips_think_even_with_markdown_inside(self):
+        q = ("<think>\n# step 1: read files\n- maybe a table\n---\n</think>\n" + CLEAN)
+        out = sanitize_model_spec(q)
+        self.assertNotIn("<think>", out)
+        self.assertNotIn("</think>", out)
+        self.assertNotIn("step 1: read files", out)
+        self.assertTrue(out.lstrip().startswith("---") or out.lstrip().startswith("#"))
+
+    def test_strips_thinking_and_reasoning_variants(self):
+        for tag in ("thinking", "reasoning", "think"):
+            q = f"<{tag}>planning the spec, considering # headings and lists</{tag}>\n\n" + CLEAN
+            out = sanitize_model_spec(q)
+            self.assertNotIn(f"<{tag}>", out)
+            self.assertNotIn("planning the spec", out)
+
+    def test_think_then_fenced_spec(self):
+        q = "<think>reason ## stuff</think>\n```markdown\n" + CLEAN + "```\n"
+        out = sanitize_model_spec(q)
+        self.assertNotIn("<think>", out)
+        self.assertFalse(out.lstrip().startswith("```markdown"))
+        self.assertIn("## 1. Repository overview", out)
+
+    def test_noop_when_no_think(self):
+        self.assertEqual(sanitize_model_spec(CLEAN), CLEAN)
+
+
 class TestOllamaAlias(unittest.TestCase):
     def test_ollama_alias_targets_local_endpoint(self):
         p = make_provider("ollama:qwen2.5-coder")

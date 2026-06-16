@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import re
 
+# reasoning models (Qwen3-style, DeepSeek-R1, etc.) emit a thinking block before the answer
+_THINK = re.compile(r"(?is)<\s*(think|thinking|reason(?:ing)?)\s*>.*?<\s*/\s*\1\s*>\s*")
 _FENCE_OPEN = re.compile(r"^(`{3,}|~{3,})\s*(markdown|md)?\s*$")
 _FENCE_CLOSE = re.compile(r"^(`{3,}|~{3,})\s*$")
 _HEAD = re.compile(r"^(#|---)")
@@ -73,5 +75,6 @@ def _trim_postamble(text: str) -> str:
 
 
 def sanitize_model_spec(text: str) -> str:
-    """Strip an outer wrapping fence + conversational pre/postamble; preserve inner fences. Idempotent."""
-    return _trim_postamble(_trim_preamble(_strip_outer_fence(text)))
+    """Strip a reasoning `<think>` block, an outer wrapping fence, and conversational pre/postamble;
+    preserve inner fences. Idempotent and a no-op on clean specs."""
+    return _trim_postamble(_trim_preamble(_strip_outer_fence(_THINK.sub("", text))))
