@@ -181,6 +181,24 @@ while keeping the deterministic symbol inventory. Scoring stays model-free (zero
 completeness step still appends the full symbol listing *after* generation (the model never
 transcribes it). Combine with `render --view agent` to keep the *consumed* spec lean too.
 
+## As-is → to-be → orchestrate: `check-artifact`
+
+Beyond *understanding* a repo, two further skills extend the chain (feature 019): **`repo-architecture`**
+(as-is Architecture View + Change-Impact / blast-radius) and **`repo-orchestration`** (ADRs + Design
+Doc + a machine-readable Task Ledger — *an artifact, not an executor*). The artifacts they produce are
+validated by **model-free deterministic checks** that back the validation gate:
+
+```sh
+reposkillopt-engine check-artifact --kind architecture --file .reposkillopt/architecture/architecture-view.md --repo .
+reposkillopt-engine check-artifact --kind impact       --file .reposkillopt/impact/change-impact-analysis.md   --repo .
+reposkillopt-engine check-artifact --kind adr          --file .reposkillopt/decisions/ADR-001-*.md
+reposkillopt-engine check-artifact --kind ledger       --file .reposkillopt/plan/task-ledger.md
+```
+
+`architecture`/`impact` reuse `grounding` for citation resolution (need `--repo`); `ledger` verifies
+every task has a goal + acceptance, declared deps exist, the dependency graph is **acyclic**, and the
+`topological_order` is valid; `adr` requires ≥2 options weighed. Exit non-zero on any failure.
+
 ## Two improvement loops (both first-class) — `optimize-repo` + `refine-spec`
 
 There are two complementary automatic loops, and they **chain**:

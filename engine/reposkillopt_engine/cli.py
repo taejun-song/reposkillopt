@@ -231,6 +231,27 @@ def cmd_refactors(args) -> int:
     return 0
 
 
+def cmd_check_artifact(args) -> int:
+    from .artifact_checks import (check_adr, check_architecture_view, check_impact_analysis,
+                                  check_task_ledger)
+    f = Path(args.file)
+    if not f.is_file():
+        print(f"error: file not found: {f}", file=sys.stderr)
+        return 2
+    text = f.read_text()
+    if args.kind in ("architecture", "impact"):
+        if not args.repo:
+            print(f"error: --kind {args.kind} needs --repo for citation resolution", file=sys.stderr)
+            return 2
+        res = (check_architecture_view if args.kind == "architecture" else check_impact_analysis)(args.repo, text)
+    else:
+        res = check_task_ledger(text) if args.kind == "ledger" else check_adr(text)
+    print(f"{args.kind}: {'PASS' if res.passed else 'FAIL'} ({len(res.failures)} issue(s))")
+    for fail in res.failures:
+        print(f"  - {fail}", file=sys.stderr)
+    return 0 if res.passed else 1
+
+
 def cmd_refine_spec(args) -> int:
     from .providers import make_provider
     from .refine import refine_loop, score_spec
@@ -371,6 +392,13 @@ def main(argv: list[str] | None = None) -> int:
     rs.add_argument("--timeout", type=float, default=600.0)
     rs.add_argument("--out", help="default: <repo>/.reposkillopt/specs/refined-repository-specification.md")
     rs.set_defaults(func=cmd_refine_spec)
+
+    ca = sub.add_parser("check-artifact",
+                        help="deterministic checks for as-is/to-be artifacts (architecture/impact/adr/ledger)")
+    ca.add_argument("--kind", required=True, choices=["architecture", "impact", "adr", "ledger"])
+    ca.add_argument("--file", required=True, help="path to the artifact")
+    ca.add_argument("--repo", help="repo path for citation resolution (architecture/impact)")
+    ca.set_defaults(func=cmd_check_artifact)
 
     rv = sub.add_parser("render",
                         help="project a spec into an audience-specific view (deterministic, model-free)")
