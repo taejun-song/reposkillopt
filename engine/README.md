@@ -181,6 +181,34 @@ while keeping the deterministic symbol inventory. Scoring stays model-free (zero
 completeness step still appends the full symbol listing *after* generation (the model never
 transcribes it). Combine with `render --view agent` to keep the *consumed* spec lean too.
 
+## Two improvement loops (both first-class) — `optimize-repo` + `refine-spec`
+
+There are two complementary automatic loops, and they **chain**:
+
+1. **`optimize-repo`** improves the **skill** — each round tries a bounded skill edit and
+   regenerates the spec from scratch to measure that skill (the reward). Output: a repo-tuned
+   `best_skill.md` + an initial spec.
+2. **`refine-spec`** improves the **spec document** — it carries the *prior* spec forward and, each
+   round, computes its concrete deterministic gaps (unresolved citations, missing sections,
+   malformed citations, ER-grounding) and has the model **revise that same document** to fix exactly
+   those. A candidate is kept **only if its score strictly improves** (monotonic — the document
+   never regresses); it stops early when there are no gaps left. Scoring + gap-extraction are
+   model-free; the only model call is the revise step.
+
+```sh
+# chain them: tune the skill, then continuously refine the spec it produced
+reposkillopt-engine optimize-repo  ./repo --skill skills/repo-skillopt/SKILL.md --rollout-provider ollama:qwen3.5-coder
+reposkillopt-engine refine-spec    ./repo \
+    --skill ./repo/.reposkillopt/best_skill.md \
+    --spec  ./repo/.reposkillopt/specs/optimized-repository-specification.md \
+    --rollout-provider ollama:qwen3.5-coder --rounds 3
+#  → writes ./repo/.reposkillopt/specs/refined-repository-specification.md, score climbing each accepted round
+```
+
+`refine-spec` reuses the frozen `grounding`/`quality`/`structure`/`completeness` — no metric
+definitions change; the completeness step still guarantees 100% symbol coverage every round, so
+coverage is never something the model is asked to "fix".
+
 ## Section-scoped retrieval — lower *peak* context (opt-in)
 
 `--low-context` shrinks the one pack; **section-scoped** mode goes further by feeding each spec
