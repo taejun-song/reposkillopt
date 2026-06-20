@@ -8,21 +8,31 @@
 ### Teach any coding agent to understand a legacy repo — and produce an evidence-grounded spec it can't fake.
 
 [![license](https://img.shields.io/badge/license-Apache%202.0-4F46E5)](LICENSE)
-[![canonical skill](https://img.shields.io/badge/canonical%20skill-v0.7.0-4F46E5)](skills/repo-skillopt/SKILL.md)
-![engine tests](https://img.shields.io/badge/engine%20tests-116%20passing-10B981)
+[![canonical skill](https://img.shields.io/badge/canonical%20skill-v0.10.0-4F46E5)](skills/repo-skillopt/SKILL.md)
+![engine tests](https://img.shields.io/badge/engine%20tests-156%20passing-10B981)
 ![runs](https://img.shields.io/badge/runs-keyless%20%7C%20offline-10B981)
 ![scoring](https://img.shields.io/badge/scoring-deterministic-64748B)
 
 </div>
 
-RepoSkillOpt is a portable, vendor-neutral **Markdown skill** (plus optional tooling) that gives Claude Code, Codex, OpenCode, or any custom agent a disciplined way to read an unfamiliar codebase: every major claim is **labeled and cited to a real `file:line`**, uncertainty is called out, and your feedback is folded back into the skill itself.
+## The whole idea, in 30 seconds
 
-- 🧭 **Evidence-grounded** — facts carry citations; hypotheses are marked `[inference]`; an honest `[unknown]` beats a confident guess.
-- 🔌 **Works anywhere** — one skill, thin adapters per agent; installs online **or fully offline**; runs against API, OSS, or a local LLM.
-- 🎯 **Self-tuning per repo** — an optional engine specializes the skill for *your* codebase, scored by how well its citations actually resolve against real files (historic grounding lift **74% → 98%** on `pallets/click`, **69% → 100%** on `itsdangerous`).
-- ✅ **Guarantees, not just lift** — a v0.5.0 spec is **100% citation-grounded, 100% section-complete, and accounts for 100% of functions/classes** (measured deterministically), with malformed citations driven toward zero — before any tuning.
+A coding agent reading an unfamiliar repo tends to guess. RepoSkillOpt stops the guessing:
 
-Not a service, not a database, not a fine-tune — just a skill, templates, adapters, and a rubric.
+1. **Install** a small, vendor-neutral **Markdown skill** into your agent (Claude Code, OpenCode, Codex, Cursor — online or fully offline; any API, open-source, or local model).
+2. **Ask** it to understand your repo. It writes a structured **Repository Specification** where *every* fact is cited to a real `file:line` — including a **codebase ontology** (entities + relations), **every business workflow traced** end-to-end, a grounded **ER diagram**, and **refactoring opportunities**. Unknowns are marked, never faked.
+3. **It can't fake it.** Deterministic checks (no model) verify the citations actually resolve, that **100% of functions/classes are accounted for**, and that the diagrams match real tables — so even a weak open-source model produces an honest spec or is caught.
+4. **It improves itself.** An optional, keyless engine runs an **automated loop** that tunes the skill *for your repo*, scored by those same checks against your real files — **no human feedback needed**.
+
+That's it: a portable skill that produces a spec it can't fake, and a loop that makes the skill better at *your* codebase on its own. Not a service, not a database, not a fine-tune — just a skill, templates, adapters, and an optional engine.
+
+| | |
+|---|---|
+| 🧭 **Evidence-grounded** | facts carry `file:line` citations; hypotheses marked `[inference]`; an honest `[unknown]` beats a confident guess |
+| 🔌 **Works anywhere** | one skill, thin adapters per agent; online or offline; API, OSS, or local LLM — keyless via `claude -p` / `opencode run` |
+| 🗺️ **Deep & structured** | 20 sections: ontology, business workflows, ER diagram, refactoring opportunities — all cited |
+| ✅ **Guarantees, not vibes** | deterministic: 100% citation grounding, 100% symbol coverage, grounded diagrams — measured, not claimed |
+| 🔁 **Self-improving** | automated, keyless per-repo optimization loop (historic lift **74% → 98%** on `pallets/click`) |
 
 ## ⚡ Quick start
 
