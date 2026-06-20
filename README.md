@@ -192,6 +192,24 @@ RepoSkillOpt is deliberately **layered** — this is the key mental model:
 So *"each repository can have a different, tuned skill"* is achieved **without** polluting the
 shared base: the canonical stays generic; specialization is an opt-in layer on top.
 
+### Three stages, three skills: understand → analyze as-is → plan to-be
+
+The capability runs in three stages, delivered as three separate skills. The **generic
+understanding skill is unchanged**; the as-is skill is the **repo-specializing** layer that deepens
+its output, and the to-be skill plans against that:
+
+| Stage | Skill | Produces | Gate |
+|-------|-------|----------|------|
+| **Understand** | [`repo-skillopt`](skills/repo-skillopt/SKILL.md) *(generic, unchanged)* | the 20-section **Repository Specification** | grounding · completeness · structure |
+| **Analyze as-is** | [`repo-architecture`](skills/repo-architecture/SKILL.md) *(repo-specializing)* | **Architecture View** (C4 + dependency graph) + **Change-Impact / blast-radius** | `check-artifact --kind architecture\|impact` |
+| **Plan to-be** | [`repo-orchestration`](skills/repo-orchestration/SKILL.md) | **ADRs** + **Design Doc** + a machine-readable **Task Ledger** (*an artifact, not an executor*) | `check-artifact --kind adr\|ledger` |
+
+Each stage builds on the **cited evidence** of the prior one, and every artifact must pass its
+**deterministic checks** (model-free; the citation/cycle/acceptance rules in
+[`reposkillopt_engine/artifact_checks.py`](engine/reposkillopt_engine/artifact_checks.py)) before it
+is considered done. The two new skills reuse the same Feedback-Item → Skill-Edit-Proposal →
+held-out-validation-gate machinery; the generic `repo-skillopt` contract is never changed.
+
 ## 📦 What you get
 
 ```text
