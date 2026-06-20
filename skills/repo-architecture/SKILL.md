@@ -8,11 +8,14 @@ version: 0.1.0
 
 ## Purpose
 
-This skill deepens the existing **Repository Specification** into an evidence-grounded view of the
-*current* architecture and answers "what would a change ripple into?" — before anything is touched.
-It produces an **Architecture View** and a **Change-Impact (blast-radius) Analysis**. It is the
-*analyze as-is* stage that the *plan to-be* skill consumes. Vendor-neutral: it does not depend on
-any particular coding-agent runtime.
+This is the **repo-specializing analysis layer** of RepoSkillOpt. The generic understanding skill
+(`repo-skillopt`) is unchanged — it produces the repo-neutral **Repository Specification**. This skill
+*specializes on a specific repository*: it deepens that Repository Specification into an
+evidence-grounded view of the *current* architecture and answers "what would a change ripple into?"
+— before anything is touched. It produces an **Architecture View** and a **Change-Impact
+(blast-radius) Analysis**, and is the *analyze as-is* stage the *plan to-be* skill (`repo-orchestration`)
+consumes. The skill's own content is vendor-neutral (no coding-agent runtime dependency); its
+*output* is repo-specific.
 
 ## Trigger Conditions
 

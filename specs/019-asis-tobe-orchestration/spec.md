@@ -95,7 +95,7 @@ The same bounded self-improvement applies to both new skills: corrections accumu
 
 ## Assumptions
 
-- The two skills are **new, separate canonical skills** (each its own `skills/<name>/SKILL.md` + four adapters + version), not edits to the existing `repo-skillopt` skill (whose contract is a stated non-goal to change).
+- **Two-layer model (per the maintainer's intent):** the **generic** `repo-skillopt` understanding skill is kept **unchanged** (it produces the repo-neutral Repository Specification); the as-is **`repo-architecture`** skill is the **repo-specializing analysis layer** that consumes that spec and deepens it for a specific repository. `repo-orchestration` (to-be) is a separate skill. All are new, separate `skills/<name>/SKILL.md` + four adapters + version — no edit to the generic skill's contract (the FR-014 non-goal is honored).
 - "Machine-readable task ledger" = Markdown + YAML front matter with a structured task table (and optionally a deterministic JSON projection, consistent with the existing render/projection pattern); no new runtime dependency.
 - The as-is skill MAY reuse the existing deterministic engine analyzers (ontology, business workflows, the §16 change-impact map) as *evidence inputs*, but the deliverable is **skill-first** (Markdown + templates + rubric); engine support is optional, not required for acceptance.
 - "Held-out reference set", "validation gate", "rubric scoring", and "deterministic checks" reuse the existing `rubric/` machinery and feature-003/004 gate; each new skill contributes its own rubric dimensions + checks into that machinery.
