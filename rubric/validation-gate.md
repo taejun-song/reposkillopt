@@ -110,3 +110,20 @@ PASS  otherwise (no regression; every contested at-or-below dimension adjudicate
 ```
 
 The verdict depends only on the recorded per-scorer matrix and these rules, so anyone re-aggregating reaches the same `PASS`/`FAIL`/`HELD`. The optional helper `rubric/scripts/majority-aggregate.sh` implements exactly this rule over a report's aggregated tables; it is a convenience, not a requirement. Report schema: `specs/004-majority-scoring/contracts/majority-gate-report.contract.md`.
+
+## Extension — the as-is / to-be skills (feature 019)
+
+The same gate covers the **`repo-architecture`** and **`repo-orchestration`** skills, with each
+skill's own rubric and deterministic checks:
+
+- **Regeneration is agent-driven.** A candidate skill version re-produces its artifacts (Architecture
+  View / Change-Impact / ADRs / Design Doc / Task Ledger) for each disjoint **held-out** repo —
+  exactly as the original gate regenerates the Repository Specification. No new engine generate path
+  is required.
+- **Acceptance criterion (unchanged shape).** Accept only if, on the held-out set, **no per-dimension
+  rubric score regresses** (`rubric/asis-architecture-rubric.md` / `rubric/tobe-orchestration-rubric.md`)
+  **AND** the deterministic checks still pass (`reposkillopt_engine/artifact_checks.py`:
+  `check_architecture_view`, `check_impact_analysis`, `check_adr`, `check_task_ledger`).
+- **Reject + record on regression** (SC-004): a candidate that regresses any dimension, or whose
+  artifacts fail a deterministic check, is rejected and the regression is recorded in the gate report
+  (`rubric/gates/`). Nothing is silently promoted.

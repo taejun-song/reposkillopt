@@ -33,6 +33,7 @@ That's it: a portable skill that produces a spec it can't fake, and a loop that 
 | 🗺️ **Deep & structured** | 20 sections: ontology, business workflows, ER diagram, refactoring opportunities — all cited |
 | ✅ **Guarantees, not vibes** | deterministic: 100% citation grounding, 100% symbol coverage, grounded diagrams — measured, not claimed |
 | 🔁 **Self-improving** | automated, keyless per-repo optimization loop (historic lift **74% → 98%** on `pallets/click`) |
+| 🏗️ **Three stages** | understand → **analyze as-is** (architecture + blast-radius) → **plan to-be** (ADRs + design + a machine-readable task ledger), each gated by deterministic checks |
 
 ## ⚡ Quick start
 
