@@ -231,6 +231,38 @@ def cmd_refactors(args) -> int:
     return 0
 
 
+def cmd_refine_spec(args) -> int:
+    from .providers import make_provider
+    from .refine import refine_loop, score_spec
+    repo = Path(args.repo)
+    if not repo.is_dir():
+        print(f"error: not a directory: {repo}", file=sys.stderr)
+        return 2
+    skill = Path(args.skill).read_text()
+    kw = {} if args.rollout_provider.startswith("fake") else {"timeout": args.timeout}
+    provider = make_provider(args.rollout_provider, **kw)
+    if args.spec:                       # carry an EXISTING spec forward (e.g. optimize-repo's output)
+        initial = Path(args.spec).read_text()
+    else:                               # or generate one to start from
+        from .completeness import ensure_symbol_completeness
+        from .evidence import build_evidence_pack
+        from .judge import generate_spec
+        pack = build_evidence_pack(str(repo))
+        initial = ensure_symbol_completeness(generate_spec(provider, skill, repo.name, pack.text), str(repo))
+    s0, _ = score_spec(str(repo), initial)
+    print(f"refining {repo.name} — initial score {s0:.3f}, up to {args.rounds} rounds", file=sys.stderr)
+    res = refine_loop(provider, skill, str(repo), repo.name, initial_spec=initial, rounds=args.rounds)
+    out = Path(args.out) if args.out else (repo / ".reposkillopt" / "specs" / "refined-repository-specification.md")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(res.spec)
+    sN, _ = score_spec(str(repo), res.spec)
+    print(f"final score {sN:.3f} (was {s0:.3f}) after {res.rounds} rounds; wrote {out}")
+    for st in res.history:
+        print(f"  round {st.round}: score {st.score:.3f} cite {st.citation_rate:.0%} "
+              f"{'ACCEPT' if st.accepted else 'reject'} ({st.n_gaps} gaps left)", file=sys.stderr)
+    return 0
+
+
 def cmd_render(args) -> int:
     from .render import render
     spec = Path(args.spec)
@@ -327,6 +359,18 @@ def main(argv: list[str] | None = None) -> int:
                         help="detect repeated structure that could be abstracted (advisory), model-free")
     rf.add_argument("repo", help="path to the repository")
     rf.set_defaults(func=cmd_refactors)
+
+    rs = sub.add_parser("refine-spec",
+                        help="continuously improve a spec: carry it forward + fix deterministic gaps each round (monotonic)")
+    rs.add_argument("repo", help="path to the repository")
+    rs.add_argument("--skill", required=True, help="skill to revise with (e.g. optimize-repo's best_skill.md)")
+    rs.add_argument("--spec", help="starting spec to carry forward (e.g. optimize-repo's output); default: generate one")
+    rs.add_argument("--rollout-provider", default="claude-cli",
+                    help="revise/score provider: claude-cli | opencode-cli | anthropic:<model> | openai:<model> | ollama:<model>")
+    rs.add_argument("--rounds", type=int, default=3)
+    rs.add_argument("--timeout", type=float, default=600.0)
+    rs.add_argument("--out", help="default: <repo>/.reposkillopt/specs/refined-repository-specification.md")
+    rs.set_defaults(func=cmd_refine_spec)
 
     rv = sub.add_parser("render",
                         help="project a spec into an audience-specific view (deterministic, model-free)")

@@ -82,6 +82,27 @@ def generate_spec_section_scoped(provider: LLMProvider, skill_text: str, repo_na
     return "\n\n".join(parts) + "\n", stats
 
 
+def revise_spec(provider: LLMProvider, skill_text: str, repo_name: str,
+                prior_spec: str, gaps: list[str]) -> str:
+    """Revise the PRIOR spec to fix concrete deterministic gaps — continuous refinement (feature 018).
+
+    Feeds the previous document forward (not a from-scratch regenerate) so the spec improves
+    incrementally; the caller scores it and keeps it only if it improved (monotonic)."""
+    gap_lines = "\n".join(f"- {g}" for g in gaps) or "- (no automatic gaps; tighten weak claims)"
+    prompt = (
+        "REGENERATE_SPEC\n"
+        "Revise the Repository Specification below to FIX each listed gap. Preserve every claim "
+        "that is already correct and cited; change only what the gaps require. Keep all sections "
+        "and the label-and-citation discipline. Output the FULL revised specification (Markdown).\n\n"
+        f"<skill>\n{skill_text}\n</skill>\n\n"
+        f"<gaps to fix>\n{gap_lines}\n</gaps to fix>\n\n"
+        f"<repository name=\"{repo_name}\"/>\n\n"
+        f"<current-spec>\n{prior_spec}\n</current-spec>\n"
+    )
+    from .sanitize import sanitize_model_spec
+    return sanitize_model_spec(provider.complete(prompt, system="You are a careful repository-understanding agent."))
+
+
 def score_spec(provider: LLMProvider, spec_text: str, repo_name: str) -> ScoreCard:
     dims = ", ".join(DIMENSIONS)
     checks = ", ".join(CHECKS)
