@@ -231,6 +231,53 @@ def cmd_refactors(args) -> int:
     return 0
 
 
+def cmd_summarize(args) -> int:
+    from .providers import make_provider
+    from .summarize import summarize_repo
+    repo = Path(args.repo)
+    if not repo.is_dir():
+        print(f"error: not a directory: {repo}", file=sys.stderr)
+        return 2
+    kw = {} if args.rollout_provider.startswith("fake") else {"timeout": args.timeout}
+    provider = make_provider(args.rollout_provider, **kw)
+    rep = summarize_repo(provider, str(repo), char_budget=args.char_budget)
+    pct = (rep.files_summarized * 100 // rep.files_total) if rep.files_total else 100
+    print(f"summarized {rep.files_summarized}/{rep.files_total} files ({pct}%), "
+          f"{rep.skeleton_fallbacks} skeleton-only; peak {rep.peak_chars} chars, "
+          f"total {rep.total_chars} chars -> {rep.summaries_dir}")
+    return 0 if rep.files_summarized == rep.files_total else 1
+
+
+def cmd_generate_spec(args) -> int:
+    from .completeness import ensure_symbol_completeness
+    from .providers import make_provider
+    repo = Path(args.repo)
+    if not repo.is_dir():
+        print(f"error: not a directory: {repo}", file=sys.stderr)
+        return 2
+    skill = Path(args.skill).read_text()
+    kw = {} if args.rollout_provider.startswith("fake") else {"timeout": args.timeout}
+    provider = make_provider(args.rollout_provider, **kw)
+    if args.from_summaries:
+        from .summarize import generate_spec_from_summaries
+        spec, stats = generate_spec_from_summaries(provider, skill, str(repo))
+        print(f"[from-summaries] peak {stats['peak']} chars, total {stats['total']}, "
+              f"{stats['included']} summaries included, {len(stats['omitted'])} omitted, "
+              f"{len(stats['missing'])} missing", file=sys.stderr)
+        if stats["missing"]:
+            print(f"  WARNING: {len(stats['missing'])} files have no summary — run `summarize` first", file=sys.stderr)
+    else:
+        from .evidence import build_evidence_pack
+        from .judge import generate_spec
+        pack = build_evidence_pack(str(repo), **_pack_opts(args))
+        spec = ensure_symbol_completeness(generate_spec(provider, skill, repo.name, pack.text), str(repo))
+    out = Path(args.out) if args.out else (repo / ".reposkillopt" / "specs" / "repository-specification.md")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(spec)
+    print(f"wrote {out}")
+    return 0
+
+
 def cmd_check_artifact(args) -> int:
     from .artifact_checks import (check_adr, check_architecture_view, check_impact_analysis,
                                   check_task_ledger)
@@ -392,6 +439,28 @@ def main(argv: list[str] | None = None) -> int:
     rs.add_argument("--timeout", type=float, default=600.0)
     rs.add_argument("--out", help="default: <repo>/.reposkillopt/specs/refined-repository-specification.md")
     rs.set_defaults(func=cmd_refine_spec)
+
+    sm = sub.add_parser("summarize",
+                        help="map phase: one grounded summary per source file (every file, no omission)")
+    sm.add_argument("repo", help="path to the repository")
+    sm.add_argument("--rollout-provider", default="claude-cli",
+                    help="claude-cli | opencode-cli | ollama:<model> | anthropic:<model> | openai:<model>")
+    sm.add_argument("--char-budget", type=int, default=4000, help="per-file content budget for the model")
+    sm.add_argument("--timeout", type=float, default=300.0)
+    sm.set_defaults(func=cmd_summarize)
+
+    gs = sub.add_parser("generate-spec",
+                        help="generate a Repository Specification (single-pack default, or --from-summaries)")
+    gs.add_argument("repo", help="path to the repository")
+    gs.add_argument("--skill", required=True, help="path to the SKILL.md")
+    gs.add_argument("--from-summaries", action="store_true",
+                    help="reduce phase: build the spec from .reposkillopt/summaries/ (bounded peak context)")
+    gs.add_argument("--rollout-provider", default="claude-cli")
+    gs.add_argument("--pack-budget", type=int, default=None)
+    gs.add_argument("--low-context", action="store_true")
+    gs.add_argument("--timeout", type=float, default=900.0)
+    gs.add_argument("--out", help="default: <repo>/.reposkillopt/specs/repository-specification.md")
+    gs.set_defaults(func=cmd_generate_spec)
 
     ca = sub.add_parser("check-artifact",
                         help="deterministic checks for as-is/to-be artifacts (architecture/impact/adr/ledger)")
