@@ -181,6 +181,30 @@ while keeping the deterministic symbol inventory. Scoring stays model-free (zero
 completeness step still appends the full symbol listing *after* generation (the model never
 transcribes it). Combine with `render --view agent` to keep the *consumed* spec lean too.
 
+## Summarize-then-analyze — map-reduce evidence for big repos (opt-in)
+
+When a repo overflows the single evidence pack, summarize **every** file first, then build the spec
+from the complete (small) summary set — bounded peak context, complete coverage:
+
+```sh
+# MAP: one grounded summary per source file (keyless; every file, no omission)
+reposkillopt-engine summarize <repo> --rollout-provider ollama:qwen3.5-coder
+#   → <repo>/.reposkillopt/summaries/<path>.md   ("summarized N/N files (100%) … peak/total")
+
+scripts/coverage-gate.sh <repo> <repo>/.reposkillopt/summaries --files   # verify nothing skipped
+
+# REDUCE: build the spec from the summaries (bounded peak context)
+reposkillopt-engine generate-spec <repo> --skill skills/repo-skillopt/SKILL.md --from-summaries
+#   → spec with 100% symbol coverage + resolving repo-relative citations; prints peak-vs-total
+```
+
+The file *set* is deterministic (reuses `evidence._list_code_files`) so **no file is silently
+skipped** — even a model failure falls back to the deterministic symbol skeleton. Citations are
+normalized **repo-relative** so the output grounds by construction (the two pitfalls a subagent demo's
+gates caught are fixed here). Honest tradeoff: one model call *per file* (high **total**) for a bounded
+**peak** and complete coverage — for big repos that don't fit one context; overkill for small ones.
+`generate-spec` also serves the default single-pack path (and `--section-scoped`/`--low-context`).
+
 ## As-is → to-be → orchestrate: `check-artifact`
 
 Beyond *understanding* a repo, two further skills extend the chain (feature 019): **`repo-architecture`**
