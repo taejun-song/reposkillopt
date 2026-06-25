@@ -27,8 +27,9 @@ cd /path/to/your/target-repo
 
 ```text
 reposkillopt-install [install] [--agent <id>] [--dest <dir>] [--scaffold] [--force] [--dry-run]
+reposkillopt-install --hook [--dest <dir>]
 reposkillopt-install --list [--dest <dir>]
-reposkillopt-install --uninstall <id> [--dest <dir>]
+reposkillopt-install --uninstall <id|git-hook> [--dest <dir>]
 reposkillopt-install --help | --version
 ```
 
@@ -39,8 +40,27 @@ reposkillopt-install --help | --version
 | `--scaffold` | Also create `.reposkillopt/{specs,feedback,rollouts,proposals}/` in the target. |
 | `--force` | Permit overwrite / downgrade. |
 | `--dry-run` | Print intended actions; write nothing. |
-| `--list` | List adapters recorded in the target manifest. |
-| `--uninstall <id>` | Remove a previously installed adapter (exact files only). |
+| `--hook` | Install the commit-time gate **pre-commit hook** (feature 021). |
+| `--list` | List adapters recorded in the target manifest (incl. `git-hook`). |
+| `--uninstall <id>` | Remove a previously installed adapter (exact files only); `git-hook` removes the hook. |
+
+### `--hook` — commit-time gate enforcement
+
+`--hook` installs a portable POSIX-`sh` `pre-commit` hook that gates staged `.reposkillopt/`
+artifacts and auto-remediates them until they pass (via `reposkillopt-engine gate-commit`). It is
+installed into the repo's hooks dir (honoring `core.hooksPath`) and recorded as the `git-hook`
+adapter in the manifest, so `--list` shows it and `--uninstall git-hook` removes it.
+
+- **Chains, never clobbers.** A pre-existing `pre-commit` hook is moved to
+  `pre-commit.reposkillopt-chained` and run first; its non-zero exit still blocks the commit.
+  `--uninstall git-hook` restores it byte-for-byte. Re-installing does not double-chain.
+- **Never traps you.** If no keyless provider (or the engine) is reachable, the hook **blocks and
+  reports** rather than hanging. Bypass deliberately with `REPOSKILLOPT_HOOK=off git commit ...` or
+  git's native `git commit --no-verify`.
+- **Not a git repo?** `--hook` warns and skips cleanly (exit 0).
+
+Requires `python3` + the `reposkillopt_engine` package importable at commit time (override the
+invocation with `REPOSKILLOPT_ENGINE_CMD`, the provider with `REPOSKILLOPT_PROVIDER`).
 
 ## Supported targets
 

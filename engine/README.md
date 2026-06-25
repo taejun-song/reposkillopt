@@ -199,6 +199,37 @@ reposkillopt-engine check-artifact --kind ledger       --file .reposkillopt/plan
 every task has a goal + acceptance, declared deps exist, the dependency graph is **acyclic**, and the
 `topological_order` is valid; `adr` requires ≥2 options weighed. Exit non-zero on any failure.
 
+## Commit-time enforcement — `gate-commit` (the loop, forced) (opt-in)
+
+The gates and the refine loop above are opt-in — nothing stops you committing a half-grounded spec.
+`gate-commit` makes the commit itself the convergence condition (feature 021). It gates each staged
+`.reposkillopt/` artifact and, on any failure, runs the **bounded, gate-set-monotonic** remediation
+loop until it passes, then re-stages it:
+
+```sh
+reposkillopt-engine gate-commit --repo . --staged .reposkillopt/specs/repository-specification.md
+```
+
+| Artifact kind | Gates enforced |
+|---|---|
+| Repository Specification | coverage (every source file mentioned) · grounding (every `[fact]` resolves) · completeness (100% symbol coverage) |
+| architecture / impact | check-artifact (structural) · grounding |
+| ADR / task-ledger | check-artifact (incl. ledger DAG acyclicity) |
+| feedback / other | grounding |
+
+**Guarantees.** Exit `0` only when every applicable gate passes (the committed content is the gated
+content); `1` on non-convergence or when no keyless provider is reachable (**block-and-report** — it
+runs the gates, prints the failing ones, and exits without calling a model or hanging); `2` on usage.
+The loop is **bounded** (`--rounds`, default 3) and **monotonic on the passing-gate set** — a round
+that would drop an already-passing gate is rejected, so an accepted artifact never regresses. Keyless
+providers only (`--rollout-provider auto|claude-cli|opencode-cli|ollama:<model>`); api-key providers
+are refused so a commit never prompts for a secret.
+
+**Honesty.** Gate *verdicts* are reproducible (same artifact + repo ⇒ same verdict); the remediation
+*edits* are model-driven and therefore nondeterministic. Install it as a `pre-commit` hook with the
+installer's `--hook` (see `installer/README.md`) to force it on every commit; bypass with
+`REPOSKILLOPT_HOOK=off` or `git commit --no-verify`.
+
 ## Two improvement loops (both first-class) — `optimize-repo` + `refine-spec`
 
 There are two complementary automatic loops, and they **chain**:

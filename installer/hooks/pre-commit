@@ -1,0 +1,39 @@
+#!/bin/sh
+# reposkillopt-pre-commit  (feature 021) — commit-time gate enforcement.
+# Portable POSIX sh. Chains a prior hook, honors bypass, gates staged .reposkillopt/ artifacts via the
+# engine and auto-remediates until they pass. Marker below lets the installer recognize its own hook.
+# reposkillopt-pre-commit-marker
+set -u
+
+# 1) Chain a pre-existing hook (moved aside at install), preserving its exit status.
+_self_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+_chained="$_self_dir/pre-commit.reposkillopt-chained"
+if [ -f "$_chained" ]; then
+  sh "$_chained" "$@" || exit $?
+fi
+
+# 2) Explicit disable (git's own --no-verify skips this hook entirely, before we run).
+if [ "${REPOSKILLOPT_HOOK:-on}" = "off" ]; then exit 0; fi
+
+# 3) Detect staged .reposkillopt/ artifacts; source-only commits are a no-op (no gate, no model).
+_root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+_staged=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null | grep '\.reposkillopt/' || true)
+[ -n "$_staged" ] || exit 0
+
+# 4) Resolve the engine command. Degrade to block-and-report (never hang) if unreachable.
+_engine_cmd="${REPOSKILLOPT_ENGINE_CMD:-}"
+if [ -z "$_engine_cmd" ]; then
+  if command -v python3 >/dev/null 2>&1 && python3 -c "import reposkillopt_engine" >/dev/null 2>&1; then
+    _engine_cmd="python3 -m reposkillopt_engine"
+  fi
+fi
+if [ -z "$_engine_cmd" ]; then
+  echo "[reposkillopt] engine not reachable (python3 + reposkillopt_engine) — cannot gate; commit blocked." >&2
+  echo "[reposkillopt] bypass: REPOSKILLOPT_HOOK=off git commit ...   or   git commit --no-verify" >&2
+  exit 1
+fi
+
+# 5) Delegate. The engine gates, auto-remediates (keyless provider), re-stages, and sets the exit code.
+# shellcheck disable=SC2086
+$_engine_cmd gate-commit --repo "$_root" --rollout-provider "${REPOSKILLOPT_PROVIDER:-auto}" --staged $_staged
+exit $?
