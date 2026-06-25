@@ -284,6 +284,65 @@ def cmd_refine_spec(args) -> int:
     return 0
 
 
+def cmd_gate_commit(args) -> int:
+    from . import commit_gate as cg
+    repo = Path(args.repo)
+    if not repo.is_dir():
+        print(f"error: not a directory: {repo}", file=sys.stderr)
+        return 2
+    skill_text = Path(args.skill).read_text() if args.skill else "# repo-skillopt"
+    staged = args.staged or []
+    # Quick gate pass on the staged content; resolve a provider only if something fails.
+    pre = cg.gate_commit(str(repo), skill_text, staged, provider=None, rounds=args.rounds,
+                         restage=False)
+    if not any(not r.all_pass for r in pre.reports):
+        if pre.reports:
+            print(f"[reposkillopt] {len(pre.reports)} artifact(s) pass all gates — commit proceeds")
+        return 0
+    try:
+        avail = cg.detect_keyless_provider(args.rollout_provider, timeout=args.timeout)
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    if avail.provider is None:
+        print("[reposkillopt] BLOCKED — gates failing and no keyless provider reachable "
+              f"(probed: {', '.join(avail.probed)})", file=sys.stderr)
+        _report_failures(pre.reports)
+        _print_bypass()
+        return 1
+    out = cg.gate_commit(str(repo), skill_text, staged, provider=avail.provider,
+                         rounds=args.rounds, restage=not args.no_restage)
+    for res in out.remediations:
+        status = "CONVERGED" if res.converged else "did NOT converge"
+        print(f"[reposkillopt] {res.artifact}: {status} after {len(res.rounds)} round(s)",
+              file=sys.stderr)
+        for r in res.rounds:
+            print(f"    round {r.round}: {sorted(r.before)} -> {sorted(r.after)} "
+                  f"{'accept' if r.accepted else ('REGRESS' if r.regressed else 'no-improve')}",
+                  file=sys.stderr)
+    if out.restaged:
+        print(f"[reposkillopt] re-staged: {', '.join(out.restaged)}", file=sys.stderr)
+    if out.exit_code != 0:
+        _report_failures([r for r in (cg.run_gates(str(repo), res.artifact, res.final_text)
+                                      for res in out.remediations) if not r.all_pass])
+        _print_bypass()
+    return out.exit_code
+
+
+def _report_failures(reports) -> None:
+    for rep in reports:
+        for v in rep.verdicts:
+            if not v.passed:
+                print(f"  {rep.artifact} :: {v.gate}: FAIL", file=sys.stderr)
+                for reason in v.reasons[:5]:
+                    print(f"    - {reason}", file=sys.stderr)
+
+
+def _print_bypass() -> None:
+    print("[reposkillopt] bypass: REPOSKILLOPT_HOOK=off git commit ...   or   git commit --no-verify",
+          file=sys.stderr)
+
+
 def cmd_render(args) -> int:
     from .render import render
     spec = Path(args.spec)
@@ -407,6 +466,18 @@ def main(argv: list[str] | None = None) -> int:
                     help="agent: lean Markdown (no diagrams/comments) | structured: JSON of claims+citations")
     rv.add_argument("--out", help="write here (default: stdout)")
     rv.set_defaults(func=cmd_render)
+
+    gc = sub.add_parser("gate-commit",
+                        help="gate staged .reposkillopt/ artifacts and auto-remediate until they pass (pre-commit)")
+    gc.add_argument("--repo", required=True, help="target repo root")
+    gc.add_argument("--skill", help="skill text for the remediation revise step")
+    gc.add_argument("--staged", nargs="*", default=[], help="staged artifact paths (repo-relative)")
+    gc.add_argument("--rollout-provider", default="auto",
+                    help="auto | claude-cli | opencode-cli | ollama:<model> (keyless only)")
+    gc.add_argument("--rounds", type=int, default=3, help="remediation round budget (default 3)")
+    gc.add_argument("--timeout", type=float, default=120.0, help="per-call provider timeout")
+    gc.add_argument("--no-restage", action="store_true", help="do not git-add converged artifacts")
+    gc.set_defaults(func=cmd_gate_commit)
 
     args = p.parse_args(argv)
     return args.func(args)
