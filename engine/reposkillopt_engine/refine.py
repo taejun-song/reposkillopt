@@ -48,6 +48,9 @@ def spec_gaps(repo_path: str, spec: str) -> list[str]:
         gaps.append(f"section completeness is {q.section_completeness:.0%}; some required sections are missing or empty")
     if q.malformed_citation_rate > 0:
         gaps.append("some citations are malformed (comma-joined line lists); use one anchor per citation")
+    # feature 022: deterministic hallucination findings become concrete gaps for the loop to fix
+    from .hallucination import detect_hallucinations, finding_lines
+    gaps += finding_lines(detect_hallucinations(repo_path, "specs/repository-specification.md", spec))
     return gaps
 
 
@@ -66,20 +69,34 @@ def refine_once(provider, skill_text: str, repo_path: str, repo_name: str, prior
     return ensure_symbol_completeness(revised, repo_path)
 
 
+# feature 022: a small per-hallucination penalty used in the ACCEPTANCE comparison only — it does not
+# change `score_spec`'s returned metric, it just lets a round that removes a hallucination be accepted
+# when the score would otherwise tie (so the loop actually drives a spec toward clean; SC-005).
+_HALLUC_PENALTY = 0.02
+
+
+def _n_hallucinations(repo_path: str, spec: str) -> int:
+    from .hallucination import detect_hallucinations
+    return len(detect_hallucinations(repo_path, "specs/repository-specification.md", spec))
+
+
 def refine_loop(provider, skill_text: str, repo_path: str, repo_name: str, *,
                 initial_spec: str, rounds: int = 3) -> RefineResult:
-    """Carry `initial_spec` forward and improve it for up to `rounds`; accept iff score strictly
-    improves (monotonic); stop early when there are no gaps left."""
+    """Carry `initial_spec` forward and improve it for up to `rounds`; accept iff the hallucination-
+    adjusted score strictly improves (monotonic — the metric itself is unchanged, the acceptance just
+    also rewards removing hallucinations); stop early when there are no gaps left."""
     spec = ensure_symbol_completeness(initial_spec, repo_path)
     best, _ = score_spec(repo_path, spec)
+    best_adj = best - _HALLUC_PENALTY * _n_hallucinations(repo_path, spec)
     history: list[RefineStep] = []
     for i in range(1, rounds + 1):
         if not spec_gaps(repo_path, spec):
             break                                            # already clean — nothing to fix
         cand = refine_once(provider, skill_text, repo_path, repo_name, spec)
         sc, g = score_spec(repo_path, cand)
-        accepted = sc > best
+        adj = sc - _HALLUC_PENALTY * _n_hallucinations(repo_path, cand)
+        accepted = adj > best_adj                            # rewards score AND fewer hallucinations
         history.append(RefineStep(i, sc, g.rate, accepted, len(spec_gaps(repo_path, cand))))
         if accepted:
-            spec, best = cand, sc                            # carry the improved document forward
+            spec, best, best_adj = cand, sc, adj             # carry the improved document forward
     return RefineResult(spec=spec, history=history, rounds=len(history))

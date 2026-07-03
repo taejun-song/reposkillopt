@@ -27,3 +27,18 @@ scripts/coverage-gate.sh . .reposkillopt/specs/repository-specification.md
 Best-effort regex extraction (py/js/ts/go/rb/rs/java/kt/scala), matching `structure.py`'s posture;
 common-name coincidences are a documented limitation (it is a lint, not a proof). Tests:
 `sh scripts/tests/test_coverage_gate.sh` (passes under `sh` and `dash`).
+
+## `hallucination-gate.sh` — deterministic hallucination catcher (feature 022)
+
+Zero-install counterpart to the engine's `check-hallucination`: catches four classes that citation
+resolution misses — `claim_code_mismatch` (a real symbol cited at the wrong place), `fabricated_symbol`
+(an identifier that exists nowhere), `unlabeled_claim` (a repo fact with no R10 label), and
+`unsupported_quantity` (a number absent from the cited window). Reads the repo from disk; no model.
+
+```sh
+scripts/hallucination-gate.sh . .reposkillopt/specs/repository-specification.md   # exit 0 clean / 1 findings / 2 usage
+```
+
+Semantic paraphrase (no shared code token) is the documented blind spot — a lint, not a proof. Tests:
+`sh scripts/tests/test_hallucination_gate.sh` (passes under `bash` and `dash`; includes an engine-parity
+check on shared fixtures).

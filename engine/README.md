@@ -199,6 +199,77 @@ reposkillopt-engine check-artifact --kind ledger       --file .reposkillopt/plan
 every task has a goal + acceptance, declared deps exist, the dependency graph is **acyclic**, and the
 `topological_order` is valid; `adr` requires ≥2 options weighed. Exit non-zero on any failure.
 
+## Commit-time enforcement — `gate-commit` (the loop, forced) (opt-in)
+
+The gates and the refine loop above are opt-in — nothing stops you committing a half-grounded spec.
+`gate-commit` makes the commit itself the convergence condition (feature 021). It gates each staged
+`.reposkillopt/` artifact and, on any failure, runs the **bounded, gate-set-monotonic** remediation
+loop until it passes, then re-stages it:
+
+```sh
+reposkillopt-engine gate-commit --repo . --staged .reposkillopt/specs/repository-specification.md
+```
+
+| Artifact kind | Gates enforced |
+|---|---|
+| Repository Specification | coverage (every source file mentioned) · grounding (every `[fact]` resolves) · completeness (100% symbol coverage) · **hallucination** |
+| architecture / impact | check-artifact (structural) · grounding · **hallucination** |
+| ADR / task-ledger | check-artifact (incl. ledger DAG acyclicity) |
+| feedback / other | grounding |
+
+**Guarantees.** Exit `0` only when every applicable gate passes (the committed content is the gated
+content); `1` on non-convergence or when no keyless provider is reachable (**block-and-report** — it
+runs the gates, prints the failing ones, and exits without calling a model or hanging); `2` on usage.
+The loop is **bounded** (`--rounds`, default 3) and **monotonic on the passing-gate set** — a round
+that would drop an already-passing gate is rejected, so an accepted artifact never regresses. Keyless
+providers only (`--rollout-provider auto|claude-cli|opencode-cli|ollama:<model>`); api-key providers
+are refused so a commit never prompts for a secret.
+
+**Honesty.** Gate *verdicts* are reproducible (same artifact + repo ⇒ same verdict); the remediation
+*edits* are model-driven and therefore nondeterministic. Install it as a `pre-commit` hook with the
+installer's `--hook` (see `installer/README.md`) to force it on every commit; bypass with
+`REPOSKILLOPT_HOOK=off` or `git commit --no-verify`.
+
+## Hallucination catcher — `check-hallucination` (catches what grounding can't) (opt-in)
+
+Frozen `grounding` proves a citation *resolves*; it does not prove the cited location *supports* the
+claim. Weak, small-context models (Qwen-style) exploit exactly that. The catcher (feature 022) adds
+four **deterministic, model-free** lexical checks that read the repo **from disk** — never the context
+window, so it suits small models and *cannot itself hallucinate*:
+
+```sh
+reposkillopt-engine check-hallucination --repo . --file .reposkillopt/specs/repository-specification.md
+# exit 0 = clean · 1 = findings · 2 = usage
+```
+
+| Check | Flags |
+|---|---|
+| `claim_code_mismatch` | a **real** symbol the claim names is absent from the **cited** window (mis-cited) |
+| `fabricated_symbol` | a code-like backtick that exists **nowhere** in the repo (invented API) |
+| `unlabeled_claim` | a prose line names a real file/symbol but carries no R10 label |
+| `unsupported_quantity` | a number in a `[fact]` is absent from the cited window (fabricated specific) |
+
+`claim_code_mismatch` (real-but-misplaced) and `fabricated_symbol` (nowhere) are disjoint by
+construction. Findings are reproducible and feed the machinery: they become gaps in `refine.spec_gaps`
+(the loop drives a hallucinated spec toward clean) and a **`hallucination` gate** in `gate-commit`
+(above), so weak-model commits can't land unsupported claims.
+
+**Zero-install:** `scripts/hallucination-gate.sh <repo> <artifact>` runs the same four checks in POSIX
+`sh` (no engine) for CI/pre-commit/reviewers; it agrees with the engine on the shared fixtures and
+passes under `bash`/`dash`.
+
+**Measure & tune it — `halluc-bench`.** Inject each hallucination class into a known-clean spec and
+report per-class **recall** + overall **precision**, labeled per model (the meta-loop):
+
+```sh
+reposkillopt-engine halluc-bench --repo . --spec <clean-spec> --model qwen2.5
+# -> rubric/benchmarks/hallucination-calibration-qwen2.5.md
+```
+
+**Honest blind spot.** The catcher is **lexical**. A fluent claim that is subtly wrong but shares **no
+code token** with the cited code (pure-prose paraphrase) is **not** caught — and is never implied
+verified. That semantic tier is an explicitly deferred, optional model-judge follow-up.
+
 ## Two improvement loops (both first-class) — `optimize-repo` + `refine-spec`
 
 There are two complementary automatic loops, and they **chain**:
