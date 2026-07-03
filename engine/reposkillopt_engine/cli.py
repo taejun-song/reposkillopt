@@ -343,6 +343,46 @@ def _print_bypass() -> None:
           file=sys.stderr)
 
 
+def cmd_check_hallucination(args) -> int:
+    from .hallucination import detect_hallucinations
+    repo, f = Path(args.repo), Path(args.file)
+    if not repo.is_dir() or not f.is_file():
+        print(f"error: bad repo/file: {repo} / {f}", file=sys.stderr)
+        return 2
+    findings = detect_hallucinations(str(repo), args.file, f.read_text(), window=args.window)
+    if args.json:
+        import json
+        print(json.dumps([f.__dict__ for f in findings]))
+    elif not findings:
+        print("clean")
+    else:
+        for x in findings:
+            print(f"{args.file}:{x.line} {x.kind}: {x.reason}")
+    return 1 if findings else 0
+
+
+def cmd_halluc_bench(args) -> int:
+    from .halluc_bench import run_mutation_benchmark
+    repo, spec = Path(args.repo), Path(args.spec)
+    if not repo.is_dir() or not spec.is_file():
+        print(f"error: bad repo/spec: {repo} / {spec}", file=sys.stderr)
+        return 2
+    rep = run_mutation_benchmark(str(repo), spec.read_text(), window=args.window,
+                                 model=args.model, spec_path=str(spec))
+    print(f"hallucination catcher calibration (model={rep.model}, window={rep.window})")
+    print(f"{'class':22} {'injected':>8} {'flagged':>7} {'recall':>7}")
+    for cls, (inj, fl) in rep.per_class.items():
+        r = (fl / inj) if inj else 1.0
+        print(f"{cls:22} {inj:>8} {fl:>7} {r:>7.2f}")
+    print(f"overall precision (clean spec not flagged): {rep.precision:.1f}")
+    out = Path(args.out) if args.out else (repo / "rubric" / "benchmarks" /
+                                           f"hallucination-calibration-{rep.model}.md")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(rep.render())
+    print(f"wrote {out}", file=sys.stderr)
+    return 0
+
+
 def cmd_render(args) -> int:
     from .render import render
     spec = Path(args.spec)
@@ -478,6 +518,23 @@ def main(argv: list[str] | None = None) -> int:
     gc.add_argument("--timeout", type=float, default=120.0, help="per-call provider timeout")
     gc.add_argument("--no-restage", action="store_true", help="do not git-add converged artifacts")
     gc.set_defaults(func=cmd_gate_commit)
+
+    ch = sub.add_parser("check-hallucination",
+                        help="deterministic, model-free hallucination catcher for an artifact")
+    ch.add_argument("--repo", required=True)
+    ch.add_argument("--file", required=True, help="artifact path")
+    ch.add_argument("--window", type=int, default=3, help="line window around a citation (default 3)")
+    ch.add_argument("--json", action="store_true")
+    ch.set_defaults(func=cmd_check_hallucination)
+
+    hb = sub.add_parser("halluc-bench",
+                        help="mutation benchmark: per-class recall + precision of the catcher")
+    hb.add_argument("--repo", required=True)
+    hb.add_argument("--spec", required=True, help="a known-clean grounded spec")
+    hb.add_argument("--window", type=int, default=3)
+    hb.add_argument("--model", default="fixtures", help="label the run with the model whose output is measured")
+    hb.add_argument("--out", help="calibration report path")
+    hb.set_defaults(func=cmd_halluc_bench)
 
     args = p.parse_args(argv)
     return args.func(args)

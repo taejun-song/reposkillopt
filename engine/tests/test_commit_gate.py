@@ -87,7 +87,8 @@ class TestClassifyAndSelect(unittest.TestCase):
         self.assertEqual(cg.classify_artifact("feedback/note.md", "a plain note"), cg.OTHER)
 
     def test_select_gates(self):
-        self.assertEqual(set(cg.select_gates(cg.REPO_SPEC)), {cg.COVERAGE, cg.GROUNDING, cg.COMPLETENESS})
+        self.assertEqual(set(cg.select_gates(cg.REPO_SPEC)),
+                         {cg.COVERAGE, cg.GROUNDING, cg.COMPLETENESS, cg.HALLUCINATION})  # +022
         self.assertIn(cg.CHECK_ARTIFACT, cg.select_gates(cg.ARCHITECTURE))
         self.assertIn(cg.GROUNDING, cg.select_gates(cg.ARCHITECTURE))
         self.assertEqual(cg.select_gates(cg.ADR), [cg.CHECK_ARTIFACT])

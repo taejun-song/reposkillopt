@@ -36,6 +36,7 @@ COVERAGE = "coverage"
 GROUNDING = "grounding"
 COMPLETENESS = "completeness"
 CHECK_ARTIFACT = "check_artifact"
+HALLUCINATION = "hallucination"
 
 # ---- artifact kinds ----
 REPO_SPEC = "repo_spec"
@@ -46,9 +47,9 @@ LEDGER = "ledger"
 OTHER = "other"
 
 _GATES_BY_KIND = {
-    REPO_SPEC: [COVERAGE, GROUNDING, COMPLETENESS],
-    ARCHITECTURE: [CHECK_ARTIFACT, GROUNDING],
-    IMPACT: [CHECK_ARTIFACT, GROUNDING],
+    REPO_SPEC: [COVERAGE, GROUNDING, COMPLETENESS, HALLUCINATION],
+    ARCHITECTURE: [CHECK_ARTIFACT, GROUNDING, HALLUCINATION],
+    IMPACT: [CHECK_ARTIFACT, GROUNDING, HALLUCINATION],
     ADR: [CHECK_ARTIFACT],
     LEDGER: [CHECK_ARTIFACT],
     OTHER: [GROUNDING],
@@ -159,7 +160,16 @@ def run_gates(repo: str, path: str, text: str, kind: str | None = None) -> GateR
             verdicts.append(_completeness_verdict(repo, text))
         elif gate == CHECK_ARTIFACT:
             verdicts.append(_check_artifact_verdict(repo, kind, text))
+        elif gate == HALLUCINATION:
+            verdicts.append(_hallucination_verdict(repo, path, text))
     return GateReport(artifact=path, kind=kind, verdicts=verdicts)
+
+
+def _hallucination_verdict(repo: str, path: str, text: str) -> GateVerdict:
+    from .hallucination import detect_hallucinations
+    findings = detect_hallucinations(repo, path, text)
+    reasons = [f"{f.kind} (line {f.line}): {f.reason}" for f in findings]
+    return GateVerdict(HALLUCINATION, not findings, reasons)
 
 
 # ============================ remediation ============================
